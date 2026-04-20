@@ -8,7 +8,9 @@ from dotenv import dotenv_values
 
 @dataclass(frozen=True)
 class Settings:
-    script_dir: Path
+    """Paths and values loaded from `config/.env` at the repository root."""
+
+    repo_root: Path
     config_dir: Path
     env_file: Path
     compose_file: Path
@@ -19,18 +21,18 @@ class Settings:
     litellm_master_key: str
 
 
-def _script_dir() -> Path:
-    return Path(__file__).resolve().parent.parent / "src"
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent
 
 
 def load_settings() -> Settings:
-    script_dir = _script_dir()
-    config_dir = script_dir / "config"
+    repo_root = _repo_root()
+    config_dir = repo_root / "config"
     env_file = config_dir / ".env"
     env_values = dotenv_values(env_file) if env_file.exists() else {}
 
     return Settings(
-        script_dir=script_dir,
+        repo_root=repo_root,
         config_dir=config_dir,
         env_file=env_file,
         compose_file=config_dir / "docker-compose.yml",

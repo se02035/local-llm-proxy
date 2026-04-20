@@ -5,6 +5,7 @@ on:
     paths:
       - 'local_llm_proxy/**'
       - 'tests/**'
+      - 'config/**'
       - 'pyproject.toml'
       - '.pre-commit-config.yaml'
       - '.github/workflows/python-cli-quality.yml'
@@ -30,3 +31,18 @@ jobs:
 
       - name: Run pytest
         run: pytest -q
+
+      - name: Validate docker compose
+        run: |
+          docker compose \
+            --env-file config/.env.example \
+            -f config/docker-compose.yml \
+            config -q
+
+      - name: Run yamllint on config
+        run: |
+          pip install yamllint
+          yamllint -c config/.yamllint \
+            config/litellm-config.yaml \
+            config/docker-compose.yml \
+            .github/workflows/python-cli-quality.yml

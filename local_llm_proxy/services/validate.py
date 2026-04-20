@@ -6,7 +6,6 @@ import requests
 
 from local_llm_proxy.config import Settings
 from local_llm_proxy.logging_utils import log
-from local_llm_proxy.services.process_utils import command_exists
 
 
 @dataclass(frozen=True)
@@ -26,13 +25,8 @@ def _normalize_ping_host(ollama_host: str) -> str:
 def validate_setup(settings: Settings) -> ValidationResult:
     if not settings.litellm_master_key:
         raise RuntimeError(
-            "LITELLM_MASTER_KEY is not set or is empty. Set it in src/config/.env and retry."
+            "LITELLM_MASTER_KEY is not set or is empty. Set it in config/.env and retry."
         )
-    if not command_exists("curl"):
-        raise RuntimeError("curl is required to send HTTP requests.")
-    if not command_exists("jq"):
-        raise RuntimeError("jq is required to parse JSON.")
-
     ping_host = _normalize_ping_host(settings.ollama_host)
     model = settings.ollama_model
 

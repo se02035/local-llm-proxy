@@ -23,7 +23,7 @@ class DummyResponse:
 
 def _settings() -> Settings:
     return Settings(
-        script_dir=Path("/tmp"),
+        repo_root=Path("/tmp"),
         config_dir=Path("/tmp"),
         env_file=Path("/tmp/.env"),
         compose_file=Path("/tmp/docker-compose.yml"),
@@ -37,8 +37,6 @@ def _settings() -> Settings:
 
 def test_validate_setup_success(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = _settings()
-
-    monkeypatch.setattr("local_llm_proxy.services.validate.command_exists", lambda _: True)
 
     def fake_get(url: str, timeout: tuple[int, int]) -> DummyResponse:
         assert url.endswith("/api/tags")
@@ -65,7 +63,7 @@ def test_validate_setup_success(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_validate_setup_requires_master_key() -> None:
     settings = _settings()
     settings = Settings(
-        script_dir=settings.script_dir,
+        repo_root=settings.repo_root,
         config_dir=settings.config_dir,
         env_file=settings.env_file,
         compose_file=settings.compose_file,
@@ -79,10 +77,3 @@ def test_validate_setup_requires_master_key() -> None:
         validate_setup(settings)
 
 
-def test_validate_setup_requires_tools(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    settings = _settings()
-    monkeypatch.setattr("local_llm_proxy.services.validate.command_exists", lambda _: False)
-    with pytest.raises(RuntimeError, match="curl"):
-        validate_setup(settings)

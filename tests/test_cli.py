@@ -10,7 +10,7 @@ from local_llm_proxy.config import Settings
 
 def _settings() -> Settings:
     return Settings(
-        script_dir=Path("/tmp"),
+        repo_root=Path("/tmp"),
         config_dir=Path("/tmp"),
         env_file=Path("/tmp/.env"),
         compose_file=Path("/tmp/docker-compose.yml"),

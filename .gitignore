@@ -1,2 +1,5 @@
-src/config/.env
-src/config/.litellm_virtual_key
+config/.env
+config/.litellm_virtual_key
+
+__pycache__/
+*.py[cod]

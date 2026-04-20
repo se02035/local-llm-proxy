@@ -8,13 +8,13 @@ services:
       - "127.0.0.1:${LITELLM_PORT:-4000}:4000"
     environment:
       - UI_USERNAME=${UI_USERNAME:-admin}
-      - UI_PASSWORD=${UI_PASSWORD:-secure_admin_password_123}
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-local-agent-secure-12345}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-llmproxy}:${POSTGRES_PASSWORD:-dbpassword9090}@db:5432/${POSTGRES_DB:-litellm}
+      - UI_PASSWORD=${UI_PASSWORD:-[REDACTED]}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-[REDACTED]}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-[REDACTED]}:${POSTGRES_PASSWORD:-[REDACTED]}@db:5432/${POSTGRES_DB:-litellm}
       - STORE_MODEL_IN_DB=True
-      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:14b}
-      - LITELLM_OLLAMA_MODEL=ollama/${OLLAMA_MODEL:-qwen2.5-coder:14b}
+      - OLLAMA_HOST=${OLLAMA_HOST:-[REDACTED]}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-[REDACTED]}
+      - LITELLM_OLLAMA_MODEL=ollama/${OLLAMA_MODEL:-[REDACTED]}
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -31,13 +31,13 @@ services:
     image: postgres:16.13
     container_name: litellm-db
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-llmproxy}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dbpassword9090}
+      - POSTGRES_USER=${POSTGRES_USER:-[REDACTED]}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-[REDACTED]}
       - POSTGRES_DB=${POSTGRES_DB:-litellm}
     volumes:
       - litellm_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-llmproxy} -d ${POSTGRES_DB:-litellm}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-[REDACTED]} -d ${POSTGRES_DB:-litellm}"]
       interval: 5s
       timeout: 5s
       retries: 5

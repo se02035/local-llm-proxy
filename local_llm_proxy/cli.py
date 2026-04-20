@@ -3,7 +3,7 @@ from __future__ import annotations
 import click
 
 from local_llm_proxy.config import load_settings
-from local_llm_proxy.logging_utils import err, log
+from local_llm_proxy.logging_utils import err
 from local_llm_proxy.services.models import add_model, list_models, remove_model
 from local_llm_proxy.services.proxy import restart_proxy, start_proxy, stop_proxy
 from local_llm_proxy.services.validate import validate_setup
@@ -23,7 +23,6 @@ def setup() -> None:
 def setup_start() -> None:
     """Start proxy services."""
     settings = load_settings()
-    log("Starting LiteLLM Proxy and Ngrok tunnel...")
     try:
         result = start_proxy(settings)
     except RuntimeError as exc:
@@ -37,7 +36,6 @@ def setup_start() -> None:
 def setup_stop() -> None:
     """Stop proxy services."""
     settings = load_settings()
-    log("Stopping LiteLLM Proxy and Ngrok tunnel...")
     stop_proxy(settings)
     click.echo("Teardown complete.")
 
@@ -46,7 +44,6 @@ def setup_stop() -> None:
 def setup_restart() -> None:
     """Restart proxy services."""
     settings = load_settings()
-    log("Restarting LiteLLM Proxy and Ngrok tunnel...")
     try:
         result = restart_proxy(settings)
     except RuntimeError as exc:
