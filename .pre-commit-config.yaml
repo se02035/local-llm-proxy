@@ -9,4 +9,4 @@ repos:
     hooks:
       - id: yamllint
         args: ["-c", "config/.yamllint"]
-        files: ^(config/.*\.ya?ml|\.github/workflows/.*\.ya?ml)$
+        files: \.ya?ml$
