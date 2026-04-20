@@ -1,0 +1,56 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "CLI: setup status",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "local_llm_proxy",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "args": [
+        "setup",
+        "status"
+      ]
+    },
+    {
+      "name": "CLI: setup start --public",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "local_llm_proxy",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "args": [
+        "setup",
+        "start",
+        "--public"
+      ]
+    },
+    {
+      "name": "CLI: validate",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "local_llm_proxy",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "args": [
+        "validate"
+      ]
+    }
+  ]
+}

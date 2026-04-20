@@ -1,0 +1,19 @@
+---
+description: Core python and testing standards for the project
+alwaysApply: true
+---
+
+# Project Standards
+
+## Pre-commit and Testing
+- Always run `pre-commit` and fix any reported violations before committing code.
+- Always run `pytest` to ensure all tests pass successfully before committing code.
+
+## Documentation
+- All public methods and datatypes must be documented using comprehensive docstrings.
+- Docstrings must explicitly include descriptions for all input arguments and output return values (e.g. using Google style).
+
+## Automated Testing
+- Any new or updated code logic must have corresponding automated tests.
+- When testing multiple scenarios, prefer using `@pytest.mark.parametrize` to achieve broad coverage with less code.
+- Ensure that automated tests are not just for the happy path; they must also explicitly cover corner cases and error handling scenarios.

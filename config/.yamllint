@@ -1,0 +1,12 @@
+extends: default
+
+rules:
+  truthy:
+    check-keys: false
+
+ignore: |
+  .git/
+
+yaml-files:
+  - '*.yaml'
+  - '*.yml'

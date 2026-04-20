@@ -1,0 +1,43 @@
+[project]
+name = "local-llm-proxy"
+version = "0.1.0"
+description = "CLI for managing local LiteLLM proxy and Ollama models."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "click==8.3.2",
+  "python-dotenv==1.2.2",
+  "requests==2.33.1",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.0.3",
+  "pytest-cov==7.0.0",
+  "ruff==0.15.11",
+  "pre-commit==4.5.1",
+]
+
+[project.scripts]
+local-llm-proxy = "local_llm_proxy.cli:cli"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["local_llm_proxy*"]
