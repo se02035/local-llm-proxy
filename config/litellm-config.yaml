@@ -1,0 +1,10 @@
+---
+model_list:
+  - model_name: os.environ/LITELLM_MODEL_NAME
+    litellm_params:
+      model: os.environ/LITELLM_OLLAMA_MODEL
+      api_base: os.environ/OLLAMA_HOST
+      api_key: "not-used"
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

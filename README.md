@@ -1,82 +1,131 @@
 # Local LLM Proxy
 
-This tool provides an **optional** developer setup for using self-hosted OSS models (e.g., `qwen2.5-coder:14b`) through a LiteLLM proxy, allowing seamless integration with Cursor.
+This repository provides a **Python CLI** for a small developer setup: run **Ollama** on your machine, expose it through a **LiteLLM** OpenAI-compatible proxy with **PostgreSQL**, and optionally tunnel it with **ngrok** so tools like Cursor can use a public base URL.
 
-Using this setup helps reduce API costs, improves resiliency, and keeps the model configuration easily swappable behind a standardized OpenAI-compatible endpoint.
+The goal is a single, repeatable workflow (no shell scripts): configure files under `config/`, then use `local-llm-proxy` for lifecycle, models, and validation.
+
+## Repository layout
+
+| Path | Purpose |
+|------|---------|
+| `src/local_llm_proxy/` | Click CLI and service logic |
+| `config/` | Docker Compose, LiteLLM YAML, and environment templates |
+| `config/.env` | Your local secrets (copy from `.env.example`; gitignored) |
+| `tests/` | Pytest unit tests |
 
 ## Prerequisites
 
-1.  **Docker & Docker Compose**: Required to run the LiteLLM proxy, database, and Ngrok containers.
-2.  **Ollama (Native)**: Required to run the local model. Install the Ollama app natively on your machine (e.g., from ollama.com) to ensure full GPU/Apple Silicon acceleration.
-3.  **Ngrok Account**: Required to tunnel the local proxy to the internet securely. You need your `NGROK_AUTHTOKEN`.
-4.  **`curl`**: Required for `test-setup.sh` (the script checks for `curl` before sending HTTP requests to Ollama and LiteLLM).
-5.  **`jq`**: Required for the `test-setup.sh` validation script to parse JSON responses. (`brew install jq`)
+1. **Python 3.10+** (3.11 recommended; matches CI).
+2. **Docker** and **Docker Compose** (for LiteLLM and Postgres containers; ngrok is optional).
+3. **Ollama** installed and running on the host (native install for best GPU support).
+4. **Ngrok account** and `NGROK_AUTHTOKEN` (optional — only required for public tunneling).
 
-## Quick Start
+## Install the CLI (development)
 
-### 1. Configure the Environment
-
-Copy the example environment file and customize it if necessary:
+From the repository root:
 
 ```bash
-cp src/config/.env.example src/config/.env
+python -m pip install -e ".[dev]"
 ```
 
-By default, the `.env` file exposes LiteLLM on port `4000` and configures a secure dummy key (`sk-local-agent-secure-12345`) for Cursor to use.
+This installs the `local-llm-proxy` command and development dependencies (`pytest`, `ruff`, `pre-commit`).
 
-### 2. Start the Proxy and Services
+## Configuration
 
-Start the proxy containers and fetch the public Ngrok URL automatically by using the provided wrapper script:
+1. Copy the example environment file:
+
+   ```bash
+   cp .env.example config/.env
+   ```
+
+2. Edit `config/.env` with your values (admin key for the proxy, database credentials, and Ollama settings. `NGROK_AUTHTOKEN` is only needed when using `--public`). See comments in `.env.example`.
+
+3. **LiteLLM routing** is defined in a YAML file passed to `setup start` with optional `--litellm-config` (if omitted, default `config/litellm-config.yaml` is used). Align the Ollama-related variables in `.env` with how your containers reach the host Ollama service (see comments in `.env.example`).
+
+## Using the CLI
+
+**Start (local only, default)** the stack (Compose project rooted at `config/`):
 
 ```bash
-./src/proxy.sh start
+local-llm-proxy setup start
 ```
 
-**Stop the Proxy:**
-When you are done, you can tear down the setup with:
-```bash
-./src/proxy.sh stop
-```
+This starts LiteLLM on localhost only (no ngrok tunnel).
 
-**Manual Start:**
-If you prefer not to use the wrapper script, you can start the containers and fetch the URL manually:
-```bash
-docker compose -f src/config/docker-compose.yml --env-file src/config/.env up -d
-curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url'
-```
-
-**Accessing Admin UIs:**
-- **LiteLLM UI:** Accessible at `http://localhost:4000/ui` (or via the Ngrok URL) using the `UI_USERNAME` and `UI_PASSWORD` configured in your `.env`.
-  - *Note:* The `LITELLM_MASTER_KEY` is an admin key used for authentication. It will **not** appear in the "Keys" list in the Admin UI. To see a key in that list (e.g., for usage tracking), you can manually create a "Virtual Key" in the UI.
-
-### 3. Load the Recommended Model
-
-Run the model loader script to automatically pull the recommended quantized model natively via Ollama:
+**Start with public tunnel (optional):**
 
 ```bash
-./src/load-model.sh
+local-llm-proxy setup start --public
 ```
 
-*(Note: For machines with limited RAM, 14B parameter models with 4-bit quantization are recommended to balance performance and RAM usage.)*
-
-### 4. Validate the Setup
-
-Run the end-to-end validation script to ensure the proxy is correctly communicating with your local Ollama model:
+Optionally point to a different LiteLLM config file:
 
 ```bash
-./test/test-setup.sh
+local-llm-proxy setup start --litellm-config path/to/litellm-config.yaml
+local-llm-proxy setup start --public --litellm-config path/to/litellm-config.yaml
 ```
 
-If everything is configured correctly, the script will output a success message and the generated response.
+**Stop**:
 
-### 5. Configure Cursor
+```bash
+local-llm-proxy setup stop
+```
 
-Once validated, open Cursor settings and add the local proxy:
+**Restart**:
 
-1.  **Models**: Click **+ Add Custom Model** and add the specific model name configured in LiteLLM (e.g., `gpt-4o`). Enable the toggle next to it.
-2.  **Override OpenAI Base URL**: Enter your Ngrok public URL with `/cursor` appended (e.g., `https://<your-ngrok-url>/cursor`). **Do not use `/v1`**.
-3.  **API Key**: Enter the value of `LITELLM_MASTER_KEY` from your `.env` file.
+```bash
+local-llm-proxy setup restart
+local-llm-proxy setup restart --public
+```
 
-Now, when you use `gpt-4o` in Cursor, it will route securely through LiteLLM to your local Ollama instance.
+**Ollama models** (runs `ollama` on your host):
 
-> **Note:** Supported modes are Ask and Plan. Agent mode doesn't support custom API keys yet.
+```bash
+local-llm-proxy models add <model-name>
+local-llm-proxy models remove <model-name>
+local-llm-proxy models list
+```
+
+**Validate** that Ollama responds and LiteLLM accepts a chat completion (uses the admin key from `config/.env`):
+
+```bash
+local-llm-proxy validate
+```
+
+**Manual Compose** (equivalent to what the CLI runs):
+
+```bash
+docker compose -f config/docker-compose.yml --env-file config/.env up -d
+```
+
+
+**Cursor setup tip (optional):**
+If you tunnel with ngrok and use Cursor, set **Override OpenAI Base URL** to your ngrok URL with `/cursor` appended.
+Use the **Virtual key** printed by `local-llm-proxy setup start --public` (line starts with `Virtual key:`) as Cursor's API key; do not use your personal OpenAI key.
+
+## Code quality and tests
+
+**Lint (Ruff):**
+
+```bash
+ruff check .
+```
+
+**Unit tests:**
+
+```bash
+pytest -q
+```
+
+**Pre-commit** (runs Ruff and yamllint via hooks defined in `.pre-commit-config.yaml`):
+
+```bash
+pre-commit install
+pre-commit run --all-files
+```
+
+CI runs three parallel jobs on relevant pull requests: `pre-commit` (Ruff + yamllint), `pytest`, and a non-running `docker compose config` validation (see `.github/workflows/python-cli-quality.yml`).
+
+## License
+
+See `LICENSE` in the repository root.
