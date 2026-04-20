@@ -34,5 +34,5 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
-[tool.setuptools.packages.find]
-include = ["local_llm_proxy*"]
+[tool.setuptools]
+packages = ["local_llm_proxy", "local_llm_proxy.services"]
