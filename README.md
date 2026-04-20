@@ -82,10 +82,6 @@ local-llm-proxy validate
 docker compose -f config/docker-compose.yml --env-file config/.env up -d
 ```
 
-## Cursor integration (summary)
-
-After `local-llm-proxy setup start`, use the printed ngrok URL. In Cursor: set **Override OpenAI Base URL** to your ngrok URL with `/cursor` appended (not `/v1`), and use your configured API key as documented in your LiteLLM setup. Supported Cursor modes may be limited (e.g. Ask/Plan); see Cursor docs for custom endpoints.
-
 ## Code quality and tests
 
 **Lint (Ruff):**
