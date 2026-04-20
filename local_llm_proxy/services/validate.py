@@ -64,7 +64,9 @@ def validate_setup(settings: Settings) -> ValidationResult:
         )
         response.raise_for_status()
     except requests.RequestException as exc:
-        raise RuntimeError(f"Failed to connect to LiteLLM Proxy on port {settings.litellm_port}.") from exc
+        raise RuntimeError(
+            f"Failed to connect to LiteLLM Proxy on port {settings.litellm_port}."
+        ) from exc
 
     payload = response.json()
     content = payload.get("choices", [{}])[0].get("message", {}).get("content")

@@ -100,7 +100,11 @@ def _seed_virtual_key(settings: Settings) -> str:
     headers = {"Authorization": f"Bearer {settings.litellm_master_key}"}
     models_response = requests.get("http://localhost:4000/v1/models", headers=headers, timeout=5)
     models_response.raise_for_status()
-    model_ids = [item.get("id") for item in models_response.json().get("data", []) if item.get("id")]
+    model_ids = [
+        item.get("id")
+        for item in models_response.json().get("data", [])
+        if item.get("id")
+    ]
     payload = {"models": model_ids, "key_alias": "local-proxy-key"}
     key_response = requests.post(
         "http://localhost:4000/key/generate",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from shutil import which
 import subprocess
+from shutil import which
 
 
 def run_command(
