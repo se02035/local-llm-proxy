@@ -91,7 +91,8 @@ def test_err_writes_to_stderr(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "boom" in message
 
 
-def test_trace_only_logs_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("trace_value", ["1", "true", "yes", "on"])
+def test_trace_only_logs_when_enabled(monkeypatch: pytest.MonkeyPatch, trace_value: str) -> None:
     captured: list[tuple[str, bool]] = []
 
     monkeypatch.delenv("LOCAL_LLM_PROXY_TRACE", raising=False)
@@ -106,7 +107,7 @@ def test_trace_only_logs_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     logging_utils.trace("hidden")
     assert captured == []
 
-    monkeypatch.setenv("LOCAL_LLM_PROXY_TRACE", "1")
+    monkeypatch.setenv("LOCAL_LLM_PROXY_TRACE", trace_value)
     logging_utils.trace("shown")
 
     assert len(captured) == 1

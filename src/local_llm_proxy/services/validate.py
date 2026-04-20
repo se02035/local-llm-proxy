@@ -16,6 +16,13 @@ class ValidationResult:
 
 
 def _normalize_ping_host(ollama_host: str) -> str:
+    """Normalize Ollama ping hosts to localhost while preserving URL components.
+
+    Trims whitespace, supports inputs with or without a scheme, and maps `host.docker.internal`
+    and `ollama` hostnames to `localhost` while preserving userinfo, port, path, query, and fragment.
+    Returns the rebuilt URL string, removing a leading `//` when the original input had no scheme;
+    empty input or missing hostname are returned unchanged.
+    """
     host_input = ollama_host.strip()
     if not host_input:
         return host_input

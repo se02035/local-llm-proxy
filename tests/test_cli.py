@@ -26,7 +26,7 @@ def _settings(tmp_path: Path) -> Settings:
     )
 
 
-def assert_common_cli_output(
+def _assert_common_cli_output(
     result: Any,
     captured: dict[str, Any],
     public: bool = False,
@@ -77,7 +77,7 @@ def test_setup_start_success(
     monkeypatch.setattr("local_llm_proxy.cli.start_proxy", _start)
 
     result = CliRunner().invoke(cli, ["setup", "start", *public_args, "--litellm-config", str(config_file)])
-    assert_common_cli_output(result, captured, public=public, config_file=config_file)
+    _assert_common_cli_output(result, captured, public=public, config_file=config_file)
 
 
 def test_setup_start_uses_default_litellm_config(monkeypatch, tmp_path: Path) -> None:
@@ -174,7 +174,7 @@ def test_setup_restart_success_public_prints_admin_urls(monkeypatch, tmp_path: P
     monkeypatch.setattr("local_llm_proxy.cli.restart_proxy", _restart)
 
     result = CliRunner().invoke(cli, ["setup", "restart", "--public"])
-    assert_common_cli_output(result, captured, public=True)
+    _assert_common_cli_output(result, captured, public=True)
 
 
 def test_setup_restart_passes_litellm_config(monkeypatch, tmp_path: Path) -> None:

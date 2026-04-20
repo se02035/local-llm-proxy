@@ -30,21 +30,19 @@ def test_run_command_wraps_missing_binary() -> None:
         process_utils.run_command(["definitely-not-a-real-command-xyz"])
 
 
-def test_run_command_rejects_empty_command() -> None:
-    with pytest.raises(RuntimeError, match="Invalid empty command list"):
-        process_utils.run_command([])
+@pytest.mark.parametrize(
+    ("command", "error_prefix", "expected_message"),
+    [
+        ([], None, "Invalid empty command list"),
+        ([], "setup start", "setup start: Invalid empty command list"),
+    ],
+)
+def test_run_command_rejects_empty_command(command: list[str], error_prefix: str | None, expected_message: str) -> None:
+    with pytest.raises(RuntimeError, match=expected_message):
+        process_utils.run_command(command, error_prefix=error_prefix)
 
 
-def test_run_command_rejects_empty_command_with_prefix() -> None:
-    with pytest.raises(RuntimeError, match="setup start: Invalid empty command list"):
-        process_utils.run_command([], error_prefix="setup start")
-
-
-@pytest.mark.parametrize("error_prefix", [None, "", "setup start"])
-def test_run_command_wraps_timeout_expired(
-    monkeypatch: pytest.MonkeyPatch,
-    error_prefix: str | None,
-) -> None:
+def test_run_command_wraps_timeout_expired(monkeypatch: pytest.MonkeyPatch) -> None:
     traces: list[tuple[str, dict[str, object]]] = []
 
     def _trace(message: str, **kwargs: object) -> None:
@@ -57,19 +55,24 @@ def test_run_command_wraps_timeout_expired(
     monkeypatch.setattr(process_utils.subprocess, "run", _raise_timeout)
 
     with pytest.raises(RuntimeError) as exc_info:
-        process_utils.run_command(["echo", "hi"], error_prefix=error_prefix)
+        process_utils.run_command(["sleep", "10"], timeout=1)
 
-    expected_detail = "Command timed out: echo hi"
     message = str(exc_info.value)
-    assert expected_detail in message
-    if error_prefix:
-        assert message == f"{error_prefix}: {expected_detail}"
-    else:
-        assert message == expected_detail
+    assert message == "Command timed out: sleep 10"
 
     assert traces
     assert traces[0][0] == "Executing command"
-    assert traces[0][1]["command"] == ["echo", "hi"]
+    assert traces[0][1]["command"] == ["sleep", "10"]
     assert traces[1][0] == "Command timed out"
-    assert traces[1][1]["command"] == ["echo", "hi"]
-    assert traces[1][1]["detail"] == expected_detail
+    assert traces[1][1]["command"] == ["sleep", "10"]
+    assert traces[1][1]["detail"] == "Command timed out: sleep 10"
+
+
+def test_run_command_wraps_timeout_expired_with_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _raise_timeout(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd=["sleep", "10"], timeout=1)
+
+    monkeypatch.setattr(process_utils.subprocess, "run", _raise_timeout)
+
+    with pytest.raises(RuntimeError, match="long task: Command timed out: sleep 10"):
+        process_utils.run_command(["sleep", "10"], timeout=1, error_prefix="long task")

@@ -117,10 +117,13 @@ def test_validate_setup_wraps_non_json_proxy_response(monkeypatch: pytest.Monkey
         validate_setup(settings)
 
 
-def test_normalize_ping_host_only_rewrites_hostname() -> None:
-    assert (
-        _normalize_ping_host("http://" + "host" + ".docker.internal:11434/api/tags?q=1")
-        == "http://localhost:11434/api/tags?q=1"
-    )
-    assert _normalize_ping_host("http://api-ollama.example:11434") == "http://api-ollama.example:11434"
-    assert _normalize_ping_host("http://ollama:11434") == "http://localhost:11434"
+@pytest.mark.parametrize(
+    ("host_input", "expected"),
+    [
+        ("http://host.docker.internal:11434/api/tags?q=1", "http://localhost:11434/api/tags?q=1"),
+        ("http://api-ollama.example:11434", "http://api-ollama.example:11434"),
+        ("http://ollama:11434", "http://localhost:11434"),
+    ],
+)
+def test_normalize_ping_host(host_input: str, expected: str) -> None:
+    assert _normalize_ping_host(host_input) == expected

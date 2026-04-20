@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import tempfile
 import time
 from pathlib import Path
@@ -52,6 +53,7 @@ def start_proxy(
             error_message=str(exc),
             diagnostics=diagnostics,
             public=public,
+            settings=settings,
         )
         if diagnostics:
             raise RuntimeError(f"{guidance}\n\n{diagnostics}") from exc
@@ -62,7 +64,7 @@ def start_proxy(
 
     public_url = ""
     if public:
-        public_url = _wait_for_ngrok_url(timeout_seconds=10)
+        public_url = _wait_for_ngrok_url(timeout_seconds=timeout_seconds)
         log(f"Success! Public Ngrok URL: {public_url}")
     else:
         log("Success! LiteLLM is available on localhost only (public tunnel disabled).")
@@ -109,7 +111,7 @@ def restart_proxy(
     """
     stop_proxy(settings)
     return start_proxy(
-        settings,
+        settings=settings,
         litellm_config_file=litellm_config_file,
         public=public,
         timeout_seconds=timeout_seconds,
@@ -220,7 +222,7 @@ def _collect_compose_failure_diagnostics(settings: Settings, *, public: bool) ->
     return "Additional docker compose diagnostics:\n\n" + "\n\n".join(diagnostics)
 
 
-def _compose_failure_guidance(*, error_message: str, diagnostics: str, public: bool) -> str:
+def _compose_failure_guidance(*, error_message: str, diagnostics: str, public: bool, settings: Settings) -> str:
     combined = f"{error_message}\n{diagnostics}".lower()
     suggestions: list[str] = []
 
@@ -249,14 +251,11 @@ def _compose_failure_guidance(*, error_message: str, diagnostics: str, public: b
         )
 
     if not suggestions:
-        suggestions.append(
-            "Run `docker compose -p local-llm-proxy -f config/docker-compose.yml "
-            "--env-file .env ps --all` and inspect the unhealthy/exited service."
-        )
-        suggestions.append(
-            "Run `docker compose -p local-llm-proxy -f config/docker-compose.yml "
-            "--env-file .env logs --no-color --tail 120` to view startup failures."
-        )
+        compose_command = _compose_command(settings, public=public)
+        ps_command = shlex.join([*compose_command, "ps", "--all"])
+        logs_command = shlex.join([*compose_command, "logs", "--no-color", "--tail", "120"])
+        suggestions.append(f"Run `{ps_command}` and inspect the unhealthy/exited service.")
+        suggestions.append(f"Run `{logs_command}` to view startup failures.")
         if public:
             suggestions.append(
                 "If using `--public`, verify `NGROK_AUTHTOKEN` is set correctly and that port 4040 is available."

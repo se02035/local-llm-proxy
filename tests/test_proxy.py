@@ -75,6 +75,7 @@ def test_compose_command_omits_env_file_when_missing(tmp_path: Path) -> None:
 def test_start_proxy_happy_path_public(monkeypatch, tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     commands: list[list[str]] = []
+    captured: dict[str, int] = {}
 
     def _capture(command: list[str], **kwargs) -> None:
         commands.append(command)
@@ -82,13 +83,19 @@ def test_start_proxy_happy_path_public(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(proxy, "run_command", _capture)
     monkeypatch.setattr(proxy, "_wait_for_readiness", lambda **kwargs: None)
     monkeypatch.setattr(proxy, "_seed_virtual_key", lambda *_: "vk")
-    monkeypatch.setattr(proxy, "_wait_for_ngrok_url", lambda **kwargs: "https://example.ngrok.io")
 
-    result = proxy.start_proxy(settings, public=True)
+    def _wait_for_ngrok_url(*, timeout_seconds: int) -> str:
+        captured["timeout_seconds"] = timeout_seconds
+        return "https://example.ngrok.io"
+
+    monkeypatch.setattr(proxy, "_wait_for_ngrok_url", _wait_for_ngrok_url)
+
+    result = proxy.start_proxy(settings, public=True, timeout_seconds=42)
 
     assert result == {"public_url": "https://example.ngrok.io", "virtual_key": "vk"}
     assert "--profile" in commands[0]
     assert "public" in commands[0]
+    assert captured["timeout_seconds"] == 42
 
 
 def test_start_proxy_failure_includes_compose_diagnostics(monkeypatch, tmp_path: Path) -> None:
@@ -122,13 +129,16 @@ def test_start_proxy_failure_includes_compose_diagnostics(monkeypatch, tmp_path:
 
 
 def test_compose_failure_guidance_includes_public_hint() -> None:
+    settings = _settings(Path("/tmp"))
     guidance = proxy._compose_failure_guidance(
         error_message="boom",
         diagnostics="",
         public=True,
+        settings=settings,
     )
     assert "Actionable next steps:" in guidance
-    assert "docker compose -p local-llm-proxy -f config/docker-compose.yml --env-file .env ps --all" in guidance
+    assert "docker compose -p local-llm-proxy" in guidance
+    assert "-f /tmp/docker-compose.yml --profile public ps --all" in guidance
     assert "If using `--public`, verify `NGROK_AUTHTOKEN` is set correctly" in guidance
 
 
@@ -305,9 +315,5 @@ def test_seed_virtual_key_request_errors_are_wrapped(monkeypatch, tmp_path: Path
 
     monkeypatch.setattr(proxy.requests, "get", _raise)
 
-    try:
+    with pytest.raises(RuntimeError, match="Failed to seed LiteLLM virtual key"):
         proxy._seed_virtual_key(settings)
-    except RuntimeError as exc:
-        assert "Failed to seed LiteLLM virtual key" in str(exc)
-    else:
-        raise AssertionError("Expected RuntimeError")

@@ -206,7 +206,7 @@ def setup_restart(public: bool, litellm_config_file: Path | None) -> None:
 
     Args:
         public: Whether to expose the proxy through ngrok.
-        litellm_config_file: Optional relative or absolute path to LiteLLM config YAML.
+        litellm_config_file: Path | None for LiteLLM config YAML; when None, defaults are used.
 
     Returns:
         None: Writes endpoint and key details to the terminal.
