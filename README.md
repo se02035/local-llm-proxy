@@ -33,6 +33,7 @@ python -m pip install -e ".[dev]"
 
 Use a dedicated virtual environment for this project before installing dependencies.
 This installs the `local-llm-proxy` command and development dependencies (`pytest`, `ruff`, `pre-commit`).
+It also installs `pytest-cov` so local coverage runs work.
 
 ## Configuration
 
@@ -146,6 +147,12 @@ ruff check .
 pytest -q
 ```
 
+**Unit tests with coverage:**
+
+```bash
+pytest -q --cov=local_llm_proxy --cov-report=term-missing --cov-report=xml
+```
+
 **Pre-commit** (runs Ruff and yamllint via hooks defined in `.pre-commit-config.yaml`):
 
 ```bash
@@ -153,7 +160,7 @@ pre-commit install
 pre-commit run --all-files
 ```
 
-CI runs three parallel jobs on relevant pull requests: `pre-commit` (Ruff + yamllint), `pytest`, and a non-running `docker compose config` validation (see `.github/workflows/python-cli-quality.yml`).
+CI runs three parallel jobs on relevant pull requests: `pre-commit` (Ruff + yamllint), `pytest` with coverage (including a downloadable `coverage.xml` artifact), and a non-running `docker compose config` validation (see `.github/workflows/python-cli-quality.yml`).
 
 ## License
 
