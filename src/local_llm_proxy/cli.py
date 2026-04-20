@@ -24,10 +24,7 @@ def _render_table(rows: list[tuple[str, str]]) -> str:
         f"| {header[0].ljust(key_width)} | {header[1].ljust(value_width)} |",
         divider,
     ]
-    lines.extend(
-        f"| {key.ljust(key_width)} | {value.ljust(value_width)} |"
-        for key, value in normalized_rows
-    )
+    lines.extend(f"| {key.ljust(key_width)} | {value.ljust(value_width)} |" for key, value in normalized_rows)
     lines.append(divider)
     return "\n".join(lines)
 

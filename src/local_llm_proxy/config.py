@@ -66,13 +66,8 @@ def load_settings() -> Settings:
     )
     litellm_port = _normalize_env_value(env_values.get("LITELLM_PORT")) or "4000"
     litellm_master_key = _normalize_env_value(env_values.get("LITELLM_MASTER_KEY"))
-    litellm_ollama_model = (
-        _normalize_env_value(env_values.get("LITELLM_OLLAMA_MODEL")) or f"ollama/{ollama_model}"
-    )
-    litellm_model_name = (
-        _normalize_env_value(env_values.get("LITELLM_MODEL_NAME"))
-        or f"{litellm_ollama_model}.ollama"
-    )
+    litellm_ollama_model = _normalize_env_value(env_values.get("LITELLM_OLLAMA_MODEL")) or f"ollama/{ollama_model}"
+    litellm_model_name = _normalize_env_value(env_values.get("LITELLM_MODEL_NAME")) or f"{litellm_ollama_model}.ollama"
 
     return Settings(
         repo_root=repo_root,

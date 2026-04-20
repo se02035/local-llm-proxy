@@ -208,7 +208,8 @@ def _compose_failure_guidance(*, error_message: str, diagnostics: str, public: b
         )
     if "litellm-proxy is unhealthy" in combined or "litellm-proxy unhealthy" in combined:
         suggestions.append(
-            "Container `litellm-proxy` became unhealthy. Check env values in `.env` (especially `OLLAMA_HOST`, model aliases, and `LITELLM_MASTER_KEY`)."
+            "Container `litellm-proxy` became unhealthy. Check env values in `.env` "
+            "(especially `OLLAMA_HOST`, model aliases, and `LITELLM_MASTER_KEY`)."
         )
     if "ngrok" in combined and ("authtoken" in combined or "authentication failed" in combined):
         suggestions.append(
@@ -221,10 +222,12 @@ def _compose_failure_guidance(*, error_message: str, diagnostics: str, public: b
 
     if not suggestions:
         suggestions.append(
-            "Run `docker compose -p local-llm-proxy -f config/docker-compose.yml --env-file .env ps --all` and inspect the unhealthy/exited service."
+            "Run `docker compose -p local-llm-proxy -f config/docker-compose.yml "
+            "--env-file .env ps --all` and inspect the unhealthy/exited service."
         )
         suggestions.append(
-            "Run `docker compose -p local-llm-proxy -f config/docker-compose.yml --env-file .env logs --no-color --tail 120` to view startup failures."
+            "Run `docker compose -p local-llm-proxy -f config/docker-compose.yml "
+            "--env-file .env logs --no-color --tail 120` to view startup failures."
         )
         if public:
             suggestions.append(
@@ -233,10 +236,7 @@ def _compose_failure_guidance(*, error_message: str, diagnostics: str, public: b
 
     bullets = "\n".join(f"- {item}" for item in suggestions)
     return (
-        "Failed to start docker compose services.\n"
-        "Actionable next steps:\n"
-        f"{bullets}\n"
-        f"Original error: {error_message}"
+        f"Failed to start docker compose services.\nActionable next steps:\n{bullets}\nOriginal error: {error_message}"
     )
 
 
@@ -285,9 +285,7 @@ def _seed_virtual_key(settings: Settings) -> str:
     try:
         models_response = requests.get(f"{base}/v1/models", headers=headers, timeout=5)
         models_response.raise_for_status()
-        model_ids = [
-            item.get("id") for item in models_response.json().get("data", []) if item.get("id")
-        ]
+        model_ids = [item.get("id") for item in models_response.json().get("data", []) if item.get("id")]
 
         payload = {"models": model_ids, "key_alias": "local-proxy-key"}
         key_response = requests.post(
@@ -300,9 +298,7 @@ def _seed_virtual_key(settings: Settings) -> str:
 
         virtual_key = key_response.json().get("key")
     except (requests.RequestException, ValueError, TypeError, KeyError) as exc:
-        raise RuntimeError(
-            f"Failed to seed LiteLLM virtual key on port {settings.litellm_port}: {exc}"
-        ) from exc
+        raise RuntimeError(f"Failed to seed LiteLLM virtual key on port {settings.litellm_port}: {exc}") from exc
 
     if not virtual_key:
         raise RuntimeError("Failed to generate LiteLLM virtual key.")

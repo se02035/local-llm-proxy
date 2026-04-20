@@ -69,9 +69,7 @@ def validate_setup(settings: Settings) -> ValidationResult:
         ValidationResult: Model metadata and generated completion content.
     """
     if not settings.litellm_master_key:
-        raise RuntimeError(
-            "LITELLM_MASTER_KEY is not set or is empty. Set it in .env and retry."
-        )
+        raise RuntimeError("LITELLM_MASTER_KEY is not set or is empty. Set it in .env and retry.")
     ping_host = _normalize_ping_host(settings.ollama_host)
     model = settings.ollama_model
 
@@ -103,9 +101,7 @@ def validate_setup(settings: Settings) -> ValidationResult:
         )
         response.raise_for_status()
     except requests.RequestException as exc:
-        raise RuntimeError(
-            f"Failed to connect to LiteLLM Proxy on port {settings.litellm_port}."
-        ) from exc
+        raise RuntimeError(f"Failed to connect to LiteLLM Proxy on port {settings.litellm_port}.") from exc
 
     payload = response.json()
     choices = payload.get("choices")

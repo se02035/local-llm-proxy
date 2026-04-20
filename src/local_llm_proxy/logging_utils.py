@@ -41,8 +41,7 @@ def _format_text(level: str, message: str, *, context: dict[str, Any]) -> str:
     if not context:
         return base
     context_fields = " ".join(
-        f"{key}={json.dumps(value, separators=(',', ':'), default=str)}"
-        for key, value in sorted(context.items())
+        f"{key}={json.dumps(value, separators=(',', ':'), default=str)}" for key, value in sorted(context.items())
     )
     return f"{base} {context_fields}"
 

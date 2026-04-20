@@ -43,9 +43,9 @@ def test_log_text_includes_sorted_json_context(monkeypatch: pytest.MonkeyPatch) 
 
     message, err = captured[0]
     assert err is False
-    assert "alpha={\"ok\":true}" in message
+    assert 'alpha={"ok":true}' in message
     assert "zeta=2" in message
-    assert message.index("alpha={\"ok\":true}") < message.index("zeta=2")
+    assert message.index('alpha={"ok":true}') < message.index("zeta=2")
 
 
 def test_log_json_format_emits_structured_payload(monkeypatch: pytest.MonkeyPatch) -> None:

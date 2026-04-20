@@ -45,9 +45,7 @@ def test_validate_setup_success(monkeypatch: pytest.MonkeyPatch) -> None:
         assert timeout == (5, 10)
         return DummyResponse({})
 
-    def fake_post(
-        url: str, headers: dict[str, str], json: dict, timeout: tuple[int, int]
-    ) -> DummyResponse:
+    def fake_post(url: str, headers: dict[str, str], json: dict, timeout: tuple[int, int]) -> DummyResponse:
         assert "chat/completions" in url
         assert headers["Authorization"] == "Bearer master"
         assert json["model"] == "ollama/gemma3:4b.ollama"
@@ -102,7 +100,5 @@ def test_normalize_ping_host_only_rewrites_hostname() -> None:
         _normalize_ping_host("http://" + "host" + ".docker.internal:11434/api/tags?q=1")
         == "http://localhost:11434/api/tags?q=1"
     )
-    assert (
-        _normalize_ping_host("http://api-ollama.example:11434") == "http://api-ollama.example:11434"
-    )
+    assert _normalize_ping_host("http://api-ollama.example:11434") == "http://api-ollama.example:11434"
     assert _normalize_ping_host("http://ollama:11434") == "http://localhost:11434"

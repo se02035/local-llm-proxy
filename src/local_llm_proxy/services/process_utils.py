@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import os
 import subprocess
+from collections.abc import Mapping
 from shutil import which
-from typing import Mapping
 
 from local_llm_proxy.logging_utils import trace
 

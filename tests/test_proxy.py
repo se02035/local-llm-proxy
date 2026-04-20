@@ -172,9 +172,7 @@ def test_seed_virtual_key_generates_and_writes(monkeypatch, tmp_path: Path) -> N
     assert oct(settings.virtual_key_file.stat().st_mode & 0o777) == "0o600"
 
 
-def test_seed_virtual_key_regenerates_when_cached_key_invalid(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_seed_virtual_key_regenerates_when_cached_key_invalid(monkeypatch, tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     settings.virtual_key_file.write_text("stale-key\n", encoding="utf-8")
 
