@@ -16,10 +16,11 @@ def start_proxy(
     settings: Settings,
     *,
     litellm_config_file: Path | None = None,
+    public: bool = False,
     timeout_seconds: int = 30,
 ) -> dict[str, str]:
     """Start docker services and return discovered connection details."""
-    log("Starting LiteLLM Proxy and Ngrok tunnel...")
+    log("Starting LiteLLM Proxy services...")
     command = [
         "docker",
         "compose",
@@ -30,18 +31,27 @@ def start_proxy(
     ]
     if litellm_config_file is not None:
         command.extend(["-e", f"LITELLM_CONFIG_FILE={litellm_config_file}"])
+    if public:
+        command.extend(["--profile", "public"])
     command.extend(["up", "-d"])
     run_command(command, error_prefix="Failed to start docker compose services")
+
     _wait_for_readiness(port=settings.litellm_port, timeout_seconds=timeout_seconds)
     virtual_key = _seed_virtual_key(settings)
-    public_url = _wait_for_ngrok_url(timeout_seconds=10)
-    log(f"Success! Public Ngrok URL: {public_url}")
+
+    public_url = ""
+    if public:
+        public_url = _wait_for_ngrok_url(timeout_seconds=10)
+        log(f"Success! Public Ngrok URL: {public_url}")
+    else:
+        log("Success! LiteLLM is available on localhost only (public tunnel disabled).")
+
     return {"public_url": public_url, "virtual_key": virtual_key}
 
 
 def stop_proxy(settings: Settings) -> None:
     """Stop docker services."""
-    log("Stopping LiteLLM Proxy and Ngrok tunnel...")
+    log("Stopping LiteLLM Proxy services...")
     run_command(
         [
             "docker",
@@ -62,6 +72,7 @@ def restart_proxy(
     settings: Settings,
     *,
     litellm_config_file: Path | None = None,
+    public: bool = False,
     timeout_seconds: int = 30,
 ) -> dict[str, str]:
     """Restart docker services."""
@@ -69,6 +80,7 @@ def restart_proxy(
     return start_proxy(
         settings,
         litellm_config_file=litellm_config_file,
+        public=public,
         timeout_seconds=timeout_seconds,
     )
 

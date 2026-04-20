@@ -52,6 +52,7 @@ services:
       retries: 5
 
   ngrok:
+    profiles: ["public"]
     image: ngrok/ngrok:3.37.6-alpine
     container_name: ngrok-tunnel
     environment:

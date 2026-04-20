@@ -30,7 +30,13 @@ def setup() -> None:
     show_default=True,
     help="Path to LiteLLM config YAML used by the proxy container.",
 )
-def setup_start(litellm_config_file: Path) -> None:
+@click.option(
+    "--public",
+    is_flag=True,
+    default=False,
+    help="Expose LiteLLM through ngrok public tunnel.",
+)
+def setup_start(litellm_config_file: Path, public: bool) -> None:
     """Start proxy services."""
     settings = load_settings()
     config_path = litellm_config_file
@@ -39,11 +45,15 @@ def setup_start(litellm_config_file: Path) -> None:
     if not config_path.exists():
         raise click.ClickException(f"LiteLLM config file not found: {config_path}")
     try:
-        result = start_proxy(settings, litellm_config_file=config_path)
+        result = start_proxy(settings, litellm_config_file=config_path, public=public)
     except RuntimeError as exc:
         err(str(exc))
         raise click.ClickException(str(exc)) from exc
-    click.echo(f"Public ngrok URL: {result['public_url']}")
+
+    if public and result["public_url"]:
+        click.echo(f"Public ngrok URL: {result['public_url']}")
+    else:
+        click.echo(f"LiteLLM local endpoint: http://localhost:{settings.litellm_port}")
     click.echo(f"Virtual key: {result['virtual_key']}")
 
 
@@ -60,15 +70,24 @@ def setup_stop() -> None:
 
 
 @setup.command("restart")
-def setup_restart() -> None:
+@click.option(
+    "--public",
+    is_flag=True,
+    default=False,
+    help="Expose LiteLLM through ngrok public tunnel.",
+)
+def setup_restart(public: bool) -> None:
     """Restart proxy services."""
     settings = load_settings()
     try:
-        result = restart_proxy(settings)
+        result = restart_proxy(settings, public=public)
     except RuntimeError as exc:
         err(str(exc))
         raise click.ClickException(str(exc)) from exc
-    click.echo(f"Public ngrok URL: {result['public_url']}")
+    if result["public_url"]:
+        click.echo(f"Public ngrok URL: {result['public_url']}")
+    else:
+        click.echo(f"LiteLLM local endpoint: http://localhost:{settings.litellm_port}")
     click.echo(f"Virtual key: {result['virtual_key']}")
 
 

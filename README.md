@@ -16,7 +16,7 @@ The goal is a single, repeatable workflow (no shell scripts): configure files un
 ## Prerequisites
 
 1. **Python 3.10+** (3.11 recommended; matches CI).
-2. **Docker** and **Docker Compose** (for LiteLLM, Postgres, ngrok containers).
+2. **Docker** and **Docker Compose** (for LiteLLM and Postgres containers; ngrok is optional).
 3. **Ollama** installed and running on the host (native install for best GPU support).
 4. **Ngrok account** and `NGROK_AUTHTOKEN` (optional — only required for public tunneling).
 
@@ -38,22 +38,31 @@ This installs the `local-llm-proxy` command and development dependencies (`pytes
    cp .env.example config/.env
    ```
 
-2. Edit `config/.env` with your values (admin key for the proxy, database credentials, ngrok token, and the settings your compose file expects). See comments in `.env.example`.
+2. Edit `config/.env` with your values (admin key for the proxy, database credentials, and Ollama settings. `NGROK_AUTHTOKEN` is only needed when using `--public`). See comments in `.env.example`.
 
 3. **LiteLLM routing** is defined in a YAML file passed to `setup start` with optional `--litellm-config` (if omitted, default `config/litellm-config.yaml` is used). Align the Ollama-related variables in `.env` with how your containers reach the host Ollama service (see comments in `.env.example`).
 
 ## Using the CLI
 
-**Start** the stack (Compose project rooted at `config/`):
+**Start (local only, default)** the stack (Compose project rooted at `config/`):
 
 ```bash
 local-llm-proxy setup start
+```
+
+This starts LiteLLM on localhost only (no ngrok tunnel).
+
+**Start with public tunnel (optional):**
+
+```bash
+local-llm-proxy setup start --public
 ```
 
 Optionally point to a different LiteLLM config file:
 
 ```bash
 local-llm-proxy setup start --litellm-config path/to/litellm-config.yaml
+local-llm-proxy setup start --public --litellm-config path/to/litellm-config.yaml
 ```
 
 **Stop**:
@@ -66,6 +75,7 @@ local-llm-proxy setup stop
 
 ```bash
 local-llm-proxy setup restart
+local-llm-proxy setup restart --public
 ```
 
 **Ollama models** (runs `ollama` on your host):
@@ -91,7 +101,7 @@ docker compose -f config/docker-compose.yml --env-file config/.env up -d
 
 **Cursor setup tip (optional):**
 If you tunnel with ngrok and use Cursor, set **Override OpenAI Base URL** to your ngrok URL with `/cursor` appended.
-Use the **Virtual key** printed by `local-llm-proxy setup start` (line starts with `Virtual key:`) as Cursor's API key; do not use your personal OpenAI key.
+Use the **Virtual key** printed by `local-llm-proxy setup start --public` (line starts with `Virtual key:`) as Cursor's API key; do not use your personal OpenAI key.
 
 ## Code quality and tests
 

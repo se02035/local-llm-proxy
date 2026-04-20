@@ -24,7 +24,7 @@ def _settings() -> Settings:
     )
 
 
-def test_setup_start_success(monkeypatch, tmp_path: Path) -> None:
+def test_setup_start_success_local_only(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings)
 
     config_file = tmp_path / "litellm.yaml"
@@ -32,9 +32,10 @@ def test_setup_start_success(monkeypatch, tmp_path: Path) -> None:
 
     captured: dict[str, object] = {}
 
-    def _start(_settings, *, litellm_config_file):
+    def _start(_settings, *, litellm_config_file, public):
         captured["path"] = litellm_config_file
-        return {"public_url": "https://abc.ngrok.io", "virtual_key": "vk"}
+        captured["public"] = public
+        return {"public_url": "", "virtual_key": "vk"}
 
     monkeypatch.setattr("local_llm_proxy.cli.start_proxy", _start)
 
@@ -43,8 +44,33 @@ def test_setup_start_success(monkeypatch, tmp_path: Path) -> None:
         ["setup", "start", "--litellm-config", str(config_file)],
     )
     assert result.exit_code == 0
-    assert "Public ngrok URL: https://abc.ngrok.io" in result.output
+    assert "LiteLLM local endpoint: http://localhost:4000" in result.output
     assert captured["path"] == config_file
+    assert captured["public"] is False
+
+
+def test_setup_start_success_public(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings)
+
+    config_file = tmp_path / "litellm.yaml"
+    config_file.write_text("model_list: []\n", encoding="utf-8")
+
+    captured: dict[str, object] = {}
+
+    def _start(_settings, *, litellm_config_file, public):
+        captured["path"] = litellm_config_file
+        captured["public"] = public
+        return {"public_url": "https://abc.ngrok.io", "virtual_key": "vk"}
+
+    monkeypatch.setattr("local_llm_proxy.cli.start_proxy", _start)
+
+    result = CliRunner().invoke(
+        cli,
+        ["setup", "start", "--public", "--litellm-config", str(config_file)],
+    )
+    assert result.exit_code == 0
+    assert "Public ngrok URL: https://abc.ngrok.io" in result.output
+    assert captured["public"] is True
 
 
 def test_setup_start_uses_default_litellm_config(monkeypatch, tmp_path: Path) -> None:
@@ -73,15 +99,17 @@ def test_setup_start_uses_default_litellm_config(monkeypatch, tmp_path: Path) ->
 
     captured: dict[str, object] = {}
 
-    def _start(_settings, *, litellm_config_file):
+    def _start(_settings, *, litellm_config_file, public):
         captured["path"] = litellm_config_file
-        return {"public_url": "https://abc.ngrok.io", "virtual_key": "vk"}
+        captured["public"] = public
+        return {"public_url": "", "virtual_key": "vk"}
 
     monkeypatch.setattr("local_llm_proxy.cli.start_proxy", _start)
 
     result = CliRunner().invoke(cli, ["setup", "start"])
     assert result.exit_code == 0
     assert captured["path"] == default_cfg
+    assert captured["public"] is False
 
 
 def test_setup_start_failure(monkeypatch, tmp_path: Path) -> None:
@@ -90,8 +118,9 @@ def test_setup_start_failure(monkeypatch, tmp_path: Path) -> None:
     config_file = tmp_path / "litellm.yaml"
     config_file.write_text("model_list: []\n", encoding="utf-8")
 
-    def _raise(_settings, *, litellm_config_file) -> None:
+    def _raise(_settings, *, litellm_config_file, public) -> None:
         _ = litellm_config_file
+        _ = public
         raise RuntimeError("boom")
 
     monkeypatch.setattr("local_llm_proxy.cli.start_proxy", _raise)

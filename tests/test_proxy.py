@@ -24,7 +24,7 @@ def _settings(tmp_path: Path) -> Settings:
     )
 
 
-def test_start_proxy_happy_path(monkeypatch, tmp_path: Path) -> None:
+def test_start_proxy_happy_path_local_only(monkeypatch, tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     commands: list[list[str]] = []
 
@@ -34,11 +34,14 @@ def test_start_proxy_happy_path(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(proxy, "run_command", _capture)
     monkeypatch.setattr(proxy, "_wait_for_readiness", lambda **kwargs: None)
     monkeypatch.setattr(proxy, "_seed_virtual_key", lambda *_: "vk")
-    monkeypatch.setattr(proxy, "_wait_for_ngrok_url", lambda **kwargs: "https://example.ngrok.io")
 
-    result = proxy.start_proxy(settings, litellm_config_file=Path("/tmp/litellm.yaml"))
+    result = proxy.start_proxy(
+        settings,
+        litellm_config_file=Path("/tmp/litellm.yaml"),
+        public=False,
+    )
 
-    assert result == {"public_url": "https://example.ngrok.io", "virtual_key": "vk"}
+    assert result == {"public_url": "", "virtual_key": "vk"}
     assert commands == [
         [
             "docker",
@@ -53,6 +56,25 @@ def test_start_proxy_happy_path(monkeypatch, tmp_path: Path) -> None:
             "-d",
         ]
     ]
+
+
+def test_start_proxy_happy_path_public(monkeypatch, tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    commands: list[list[str]] = []
+
+    def _capture(command: list[str], **kwargs) -> None:
+        commands.append(command)
+
+    monkeypatch.setattr(proxy, "run_command", _capture)
+    monkeypatch.setattr(proxy, "_wait_for_readiness", lambda **kwargs: None)
+    monkeypatch.setattr(proxy, "_seed_virtual_key", lambda *_: "vk")
+    monkeypatch.setattr(proxy, "_wait_for_ngrok_url", lambda **kwargs: "https://example.ngrok.io")
+
+    result = proxy.start_proxy(settings, public=True)
+
+    assert result == {"public_url": "https://example.ngrok.io", "virtual_key": "vk"}
+    assert "--profile" in commands[0]
+    assert "public" in commands[0]
 
 
 def test_stop_proxy_runs_compose_down(monkeypatch, tmp_path: Path) -> None:
