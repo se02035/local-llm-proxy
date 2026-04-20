@@ -103,7 +103,18 @@ def validate_setup(settings: Settings) -> ValidationResult:
     except requests.RequestException as exc:
         raise RuntimeError(f"Failed to connect to LiteLLM Proxy on port {settings.litellm_port}.") from exc
 
-    payload = response.json()
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raw_response = getattr(response, "text", None)
+        if raw_response is None:
+            raw_content = getattr(response, "content", b"")
+            if isinstance(raw_content, bytes):
+                raw_response = raw_content.decode("utf-8", errors="replace")
+            else:
+                raw_response = str(raw_content)
+        raise RuntimeError(f"Failed to get valid response from proxy. Full response: {raw_response}") from exc
+
     choices = payload.get("choices")
     if not isinstance(choices, list) or not choices:
         raise RuntimeError(f"Failed to get valid response from proxy. Full response: {payload}")

@@ -28,3 +28,13 @@ def test_output_uses_run_command(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_run_command_wraps_missing_binary() -> None:
     with pytest.raises(RuntimeError, match="Command not found"):
         process_utils.run_command(["definitely-not-a-real-command-xyz"])
+
+
+def test_run_command_rejects_empty_command() -> None:
+    with pytest.raises(ValueError, match="Invalid empty command list"):
+        process_utils.run_command([])
+
+
+def test_run_command_rejects_empty_command_with_prefix() -> None:
+    with pytest.raises(ValueError, match="setup start: Invalid empty command list"):
+        process_utils.run_command([], error_prefix="setup start")

@@ -161,18 +161,28 @@ def setup_status() -> None:
     """
     settings = load_settings()
     status = get_proxy_status(settings)
+    if not status.get("litellm_running") and not status.get("ngrok_running"):
+        click.echo("No local-llm-proxy services are currently running.")
+        return
 
-    ngrok_rows: list[tuple[str, str]] = [("Ngrok admin URL", status["ngrok_admin_url"])]
-    if status["public_url"]:
-        ngrok_rows.append(("Public ngrok URL", status["public_url"]))
+    ngrok_rows: list[tuple[str, str]] = []
+    if status.get("ngrok_running"):
+        if status.get("ngrok_admin_url"):
+            ngrok_rows.append(("Ngrok admin URL", status["ngrok_admin_url"]))
+        if status.get("public_url"):
+            ngrok_rows.append(("Public ngrok URL", status["public_url"]))
 
-    litellm_rows: list[tuple[str, str]] = [
-        ("LiteLLM local endpoint", status["local_endpoint"]),
-        ("LiteLLM local admin URL", status["local_admin_url"]),
-    ]
-    if status["public_url"]:
-        litellm_rows.append(("LiteLLM public admin URL", f"{status['public_url'].rstrip('/')}/ui/"))
-    litellm_rows.append(("Virtual key", status["virtual_key"] or "(not found)"))
+    litellm_rows: list[tuple[str, str]] = []
+    if status.get("litellm_running"):
+        litellm_rows.extend(
+            [
+                ("LiteLLM local endpoint", status["local_endpoint"]),
+                ("LiteLLM local admin URL", status["local_admin_url"]),
+            ]
+        )
+        if status.get("public_url"):
+            litellm_rows.append(("LiteLLM public admin URL", f"{status['public_url'].rstrip('/')}/ui/"))
+        litellm_rows.append(("Virtual key", status["virtual_key"] or "(not found)"))
 
     click.echo(_render_grouped_tables([("Ngrok", ngrok_rows), ("LiteLLM", litellm_rows)]))
 

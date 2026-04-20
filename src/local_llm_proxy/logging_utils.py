@@ -11,7 +11,7 @@ import click
 
 
 def _timestamp() -> str:
-    return datetime.now(timezone.utc).astimezone().isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _trace_enabled() -> bool:

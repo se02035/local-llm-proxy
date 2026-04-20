@@ -28,6 +28,7 @@ def _settings(tmp_path: Path) -> Settings:
 
 def test_start_proxy_happy_path_local_only(monkeypatch, tmp_path: Path) -> None:
     settings = _settings(tmp_path)
+    settings.env_file.write_text("LITELLM_PORT=4000\n", encoding="utf-8")
     commands: list[list[str]] = []
     command_kwargs: list[dict] = []
 
@@ -61,6 +62,14 @@ def test_start_proxy_happy_path_local_only(monkeypatch, tmp_path: Path) -> None:
         ]
     ]
     assert command_kwargs[0]["env"]["LITELLM_CONFIG_FILE"] == "/tmp/litellm.yaml"
+
+
+def test_compose_command_omits_env_file_when_missing(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+
+    command = proxy._compose_command(settings, public=False)
+
+    assert "--env-file" not in command
 
 
 def test_start_proxy_happy_path_public(monkeypatch, tmp_path: Path) -> None:
@@ -137,6 +146,55 @@ def test_stop_proxy_runs_compose_down(monkeypatch, tmp_path: Path) -> None:
     assert "--profile" in called[0]
     assert "public" in called[0]
     assert called[0][-2:] == ["down", "--remove-orphans"]
+
+
+def test_running_compose_services_returns_empty_on_command_failure(monkeypatch, tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+
+    def _raise(*_args, **_kwargs):
+        raise RuntimeError("compose unavailable")
+
+    monkeypatch.setattr(proxy, "run_command", _raise)
+
+    assert proxy._running_compose_services(settings) == set()
+
+
+def test_get_proxy_status_only_includes_running_services(monkeypatch, tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    settings.virtual_key_file.write_text("vk\n", encoding="utf-8")
+
+    monkeypatch.setattr(proxy, "_running_compose_services", lambda _settings: {"ngrok"})
+
+    def _fake_get(*_args, **_kwargs):
+        return SimpleNamespace(ok=True, json=lambda: {"tunnels": [{"public_url": "https://abc.ngrok.io"}]})
+
+    monkeypatch.setattr(proxy.requests, "get", _fake_get)
+
+    status = proxy.get_proxy_status(settings)
+
+    assert status["litellm_running"] is False
+    assert status["local_endpoint"] == ""
+    assert status["local_admin_url"] == ""
+    assert status["virtual_key"] == ""
+    assert status["ngrok_running"] is True
+    assert status["ngrok_admin_url"] == "http://localhost:4040"
+    assert status["public_url"] == "https://abc.ngrok.io"
+
+
+def test_get_proxy_status_with_litellm_running_sets_local_urls(monkeypatch, tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    settings.virtual_key_file.write_text("vk\n", encoding="utf-8")
+    monkeypatch.setattr(proxy, "_running_compose_services", lambda _settings: {"litellm"})
+
+    status = proxy.get_proxy_status(settings)
+
+    assert status["litellm_running"] is True
+    assert status["local_endpoint"] == "http://localhost:4000"
+    assert status["local_admin_url"] == "http://localhost:4000/ui/"
+    assert status["virtual_key"] == "vk"
+    assert status["ngrok_running"] is False
+    assert status["ngrok_admin_url"] == ""
+    assert status["public_url"] == ""
 
 
 def test_seed_virtual_key_uses_cached_file(monkeypatch, tmp_path: Path) -> None:

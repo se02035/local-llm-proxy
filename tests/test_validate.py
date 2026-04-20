@@ -95,6 +95,28 @@ def test_validate_setup_rejects_invalid_choices_payload(monkeypatch: pytest.Monk
         validate_setup(settings)
 
 
+def test_validate_setup_wraps_non_json_proxy_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = _settings()
+
+    class NonJsonResponse(DummyResponse):
+        text = "upstream returned html"
+
+        def json(self) -> dict:
+            raise ValueError("not json")
+
+    monkeypatch.setattr(
+        "local_llm_proxy.services.validate.requests.get",
+        lambda *args, **kwargs: DummyResponse({}),
+    )
+    monkeypatch.setattr(
+        "local_llm_proxy.services.validate.requests.post",
+        lambda *args, **kwargs: NonJsonResponse({}),
+    )
+
+    with pytest.raises(RuntimeError, match="Full response: upstream returned html"):
+        validate_setup(settings)
+
+
 def test_normalize_ping_host_only_rewrites_hostname() -> None:
     assert (
         _normalize_ping_host("http://" + "host" + ".docker.internal:11434/api/tags?q=1")

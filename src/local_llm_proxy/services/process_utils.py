@@ -34,6 +34,12 @@ def run_command(
     Returns:
         subprocess.CompletedProcess[str]: Completed subprocess result object.
     """
+    if not command:
+        detail = "Invalid empty command list."
+        if error_prefix:
+            detail = f"{error_prefix}: {detail}"
+        raise ValueError(detail)
+
     merged_env = None if env is None else {**os.environ, **env}
     trace(
         "Executing command",

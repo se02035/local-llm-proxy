@@ -114,3 +114,8 @@ def test_trace_only_logs_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     assert err is False
     assert "[DEBUG]" in message
     assert "shown" in message
+
+
+def test_timestamp_is_utc_offset() -> None:
+    timestamp = logging_utils._timestamp()
+    assert timestamp.endswith("+00:00")

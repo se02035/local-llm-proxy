@@ -202,6 +202,8 @@ def test_setup_status_with_public_url(monkeypatch, tmp_path: Path) -> None:
             "ngrok_admin_url": "http://localhost:4040",
             "public_url": "https://abc.ngrok.io",
             "virtual_key": "vk",
+            "litellm_running": True,
+            "ngrok_running": True,
         },
     )
 
@@ -232,6 +234,8 @@ def test_setup_status_without_public_url_or_virtual_key(monkeypatch, tmp_path: P
             "ngrok_admin_url": "http://localhost:4040",
             "public_url": "",
             "virtual_key": "",
+            "litellm_running": True,
+            "ngrok_running": False,
         },
     )
 
@@ -242,12 +246,33 @@ def test_setup_status_without_public_url_or_virtual_key(monkeypatch, tmp_path: P
     assert "http://localhost:4000" in result.output
     assert "LiteLLM local admin URL" in result.output
     assert "http://localhost:4000/ui/" in result.output
-    assert "Ngrok admin URL" in result.output
-    assert "http://localhost:4040" in result.output
+    assert "Ngrok admin URL" not in result.output
+    assert "http://localhost:4040" not in result.output
     assert "Public ngrok URL" not in result.output
     assert "LiteLLM public admin URL" not in result.output
     assert "Virtual key" in result.output
     assert "(not found)" in result.output
+
+
+def test_setup_status_without_running_services(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr("local_llm_proxy.cli.load_settings", lambda: _settings(tmp_path))
+    monkeypatch.setattr(
+        "local_llm_proxy.cli.get_proxy_status",
+        lambda _settings: {
+            "local_endpoint": "",
+            "local_admin_url": "",
+            "ngrok_admin_url": "",
+            "public_url": "",
+            "virtual_key": "",
+            "litellm_running": False,
+            "ngrok_running": False,
+        },
+    )
+
+    result = CliRunner().invoke(cli, ["setup", "status"])
+    assert result.exit_code == 0
+    assert "No local-llm-proxy services are currently running." in result.output
+    assert "| Field" not in result.output
 
 
 def test_validate_command_success(monkeypatch, tmp_path: Path) -> None:

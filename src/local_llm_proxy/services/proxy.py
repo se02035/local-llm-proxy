@@ -116,40 +116,68 @@ def restart_proxy(
     )
 
 
-def get_proxy_status(settings: Settings) -> dict[str, str]:
+def get_proxy_status(settings: Settings) -> dict[str, str | bool]:
     """Return user-facing status details for the current proxy setup.
 
     Args:
         settings: Loaded settings with file paths and port configuration.
 
     Returns:
-        dict[str, str]: Local and ngrok URLs plus the cached virtual key, if present.
+        dict[str, str | bool]: Running-state flags plus URLs and cached virtual key.
     """
+    running_services = _running_compose_services(settings)
     local_endpoint = f"http://localhost:{settings.litellm_port}"
     status = {
-        "local_endpoint": local_endpoint,
-        "local_admin_url": f"{local_endpoint}/ui/",
-        "ngrok_admin_url": "http://localhost:4040",
+        "local_endpoint": "",
+        "local_admin_url": "",
+        "ngrok_admin_url": "",
         "public_url": "",
         "virtual_key": "",
+        "litellm_running": "litellm" in running_services,
+        "ngrok_running": "ngrok" in running_services,
     }
 
-    if settings.virtual_key_file.exists():
+    if status["litellm_running"]:
+        status["local_endpoint"] = local_endpoint
+        status["local_admin_url"] = f"{local_endpoint}/ui/"
+    if status["litellm_running"] and settings.virtual_key_file.exists():
         status["virtual_key"] = settings.virtual_key_file.read_text(encoding="utf-8").strip()
 
-    try:
-        response = requests.get("http://localhost:4040/api/tunnels", timeout=1)
-        if response.ok:
-            data = response.json()
-            tunnels: list[dict[str, Any]] = data.get("tunnels", [])
-            if tunnels:
-                public_url = tunnels[0].get("public_url")
-                if public_url:
-                    status["public_url"] = str(public_url)
-    except (requests.RequestException, ValueError, TypeError, json.JSONDecodeError):
-        pass
+    if status["ngrok_running"]:
+        status["ngrok_admin_url"] = "http://localhost:4040"
+        try:
+            response = requests.get("http://localhost:4040/api/tunnels", timeout=1)
+            if response.ok:
+                data = response.json()
+                tunnels: list[dict[str, Any]] = data.get("tunnels", [])
+                if tunnels:
+                    public_url = tunnels[0].get("public_url")
+                    if public_url:
+                        status["public_url"] = str(public_url)
+        except (requests.RequestException, ValueError, TypeError, json.JSONDecodeError):
+            pass
 
     return status
+
+
+def _running_compose_services(settings: Settings) -> set[str]:
+    """Return compose service names that are currently running.
+
+    Args:
+        settings: Loaded settings with compose file and env file paths.
+
+    Returns:
+        set[str]: Running service names in the local compose project.
+    """
+    try:
+        result = run_command(
+            [*_compose_command(settings, public=True), "ps", "--services", "--filter", "status=running"],
+            capture_output=True,
+        )
+    except RuntimeError:
+        return set()
+
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
 
 
 def _compose_command(settings: Settings, *, public: bool) -> list[str]:
@@ -160,9 +188,9 @@ def _compose_command(settings: Settings, *, public: bool) -> list[str]:
         _COMPOSE_PROJECT_NAME,
         "-f",
         str(settings.compose_file),
-        "--env-file",
-        str(settings.env_file),
     ]
+    if settings.env_file.is_file():
+        command.extend(["--env-file", str(settings.env_file)])
     if public:
         command.extend(["--profile", "public"])
     return command
