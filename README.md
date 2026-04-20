@@ -50,6 +50,12 @@ This installs the `local-llm-proxy` command and development dependencies (`pytes
 local-llm-proxy setup start
 ```
 
+Optionally point to a different LiteLLM config file:
+
+```bash
+local-llm-proxy setup start --litellm-config path/to/litellm-config.yaml
+```
+
 **Stop**:
 
 ```bash
@@ -96,14 +102,14 @@ ruff check .
 pytest -q
 ```
 
-**Pre-commit** (runs Ruff via hooks defined in `.pre-commit-config.yaml`):
+**Pre-commit** (runs Ruff and yamllint via hooks defined in `.pre-commit-config.yaml`):
 
 ```bash
 pre-commit install
 pre-commit run --all-files
 ```
 
-CI runs Ruff, pytest, a non-running `docker compose config` check, and yamllint on `config/` when relevant paths change (see `.github/workflows/python-cli-quality.yml`).
+CI runs three parallel jobs on relevant pull requests: `pre-commit` (Ruff + yamllint), `pytest`, and a non-running `docker compose config` validation (see `.github/workflows/python-cli-quality.yml`).
 
 ## License
 
