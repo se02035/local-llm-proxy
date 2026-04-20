@@ -2,15 +2,16 @@
 
 This repository provides a **Python CLI** for a small developer setup: run **Ollama** on your machine, expose it through a **LiteLLM** OpenAI-compatible proxy with **PostgreSQL**, and optionally tunnel it with **ngrok** so tools like Cursor can use a public base URL.
 
-The goal is a single, repeatable workflow (no shell scripts): configure files under `config/`, then use `local-llm-proxy` for lifecycle, models, and validation.
+The goal is a single, repeatable workflow (no shell scripts): keep runtime configuration in repo-root `.env` and `config/litellm-config.yaml`, then use `local-llm-proxy` for lifecycle, models, and validation.
 
 ## Repository layout
 
 | Path | Purpose |
 |------|---------|
 | `src/local_llm_proxy/` | Click CLI and service logic |
-| `config/` | Docker Compose, LiteLLM YAML, and environment templates |
-| `config/.env` | Your local secrets (copy from `.env.example`; gitignored) |
+| `config/` | Docker Compose and LiteLLM routing YAML |
+| `.env` | Your local secrets (copy from `.env.example`; gitignored) |
+| `.env.example` | Environment template with documented variables |
 | `tests/` | Pytest unit tests |
 
 ## Prerequisites
@@ -35,12 +36,31 @@ This installs the `local-llm-proxy` command and development dependencies (`pytes
 1. Copy the example environment file:
 
    ```bash
-   cp .env.example config/.env
+   cp .env.example .env
    ```
 
-2. Edit `config/.env` with your values (admin key for the proxy, database credentials, and Ollama settings. `NGROK_AUTHTOKEN` is only needed when using `--public`). See comments in `.env.example`.
+2. Edit `.env` with your values (admin key for the proxy, database credentials, and Ollama settings. `NGROK_AUTHTOKEN` is only needed when using `--public`). See comments in `.env.example`.
 
 3. **LiteLLM routing** is defined in a YAML file passed to `setup start` with optional `--litellm-config` (if omitted, default `config/litellm-config.yaml` is used). Align the Ollama-related variables in `.env` with how your containers reach the host Ollama service (see comments in `.env.example`).
+
+## Logging and tracing
+
+CLI logs are emitted as **human-readable text** by default, while still carrying structured context fields (`key=<json-value>` pairs) when present.
+
+- Default format is `text` and emits `info`/`error` lines like `[INFO] <timestamp>: <message> key=value`.
+- For JSON output (for log ingestion), set:
+
+```bash
+LOCAL_LLM_PROXY_LOG_FORMAT=json local-llm-proxy setup start
+```
+
+- Enable debug trace events (including subprocess command lifecycle) by setting:
+
+```bash
+LOCAL_LLM_PROXY_TRACE=1 local-llm-proxy setup start
+```
+
+Accepted truthy values for tracing are `1`, `true`, `yes`, and `on`.
 
 ## Using the CLI
 
@@ -86,16 +106,22 @@ local-llm-proxy models remove <model-name>
 local-llm-proxy models list
 ```
 
-**Validate** that Ollama responds and LiteLLM accepts a chat completion (uses the admin key from `config/.env`):
+**Validate** that Ollama responds and LiteLLM accepts a chat completion (uses the admin key from `.env`):
 
 ```bash
 local-llm-proxy validate
 ```
 
-**Manual Compose** (equivalent to what the CLI runs):
+**Manual Compose** (equivalent to what the CLI runs, using project name `local-llm-proxy`):
 
 ```bash
-docker compose -f config/docker-compose.yml --env-file config/.env up -d
+docker compose -p local-llm-proxy -f config/docker-compose.yml --env-file .env up -d
+```
+
+If you need a non-default LiteLLM config file with manual Compose, export `LITELLM_CONFIG_FILE` first:
+
+```bash
+LITELLM_CONFIG_FILE=/abs/path/to/litellm-config.yaml docker compose -p local-llm-proxy -f config/docker-compose.yml --env-file .env up -d
 ```
 
 

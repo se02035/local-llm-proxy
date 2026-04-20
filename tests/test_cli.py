@@ -44,7 +44,13 @@ def test_setup_start_success_local_only(monkeypatch, tmp_path: Path) -> None:
         ["setup", "start", "--litellm-config", str(config_file)],
     )
     assert result.exit_code == 0
-    assert "LiteLLM local endpoint: http://localhost:4000" in result.output
+    assert "| Field" in result.output
+    assert "LiteLLM local endpoint" in result.output
+    assert "http://localhost:4000" in result.output
+    assert "LiteLLM local admin URL" in result.output
+    assert "http://localhost:4000/ui/" in result.output
+    assert "Virtual key" in result.output
+    assert "vk" in result.output
     assert captured["path"] == config_file
     assert captured["public"] is False
 
@@ -69,7 +75,19 @@ def test_setup_start_success_public(monkeypatch, tmp_path: Path) -> None:
         ["setup", "start", "--public", "--litellm-config", str(config_file)],
     )
     assert result.exit_code == 0
-    assert "Public ngrok URL: https://abc.ngrok.io" in result.output
+    assert "| Field" in result.output
+    assert "LiteLLM local endpoint" in result.output
+    assert "http://localhost:4000" in result.output
+    assert "LiteLLM local admin URL" in result.output
+    assert "http://localhost:4000/ui/" in result.output
+    assert "Public ngrok URL" in result.output
+    assert "https://abc.ngrok.io" in result.output
+    assert "Ngrok admin URL" in result.output
+    assert "http://localhost:4040" in result.output
+    assert "LiteLLM public admin URL" in result.output
+    assert "https://abc.ngrok.io/ui/" in result.output
+    assert "Virtual key" in result.output
+    assert "vk" in result.output
     assert captured["public"] is True
 
 
@@ -153,6 +171,90 @@ def test_setup_stop_runtime_error_is_click_exception(monkeypatch) -> None:
     result = CliRunner().invoke(cli, ["setup", "stop"])
     assert result.exit_code != 0
     assert "stop failed" in result.output
+
+
+def test_setup_restart_success_public_prints_admin_urls(monkeypatch) -> None:
+    monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings)
+
+    def _restart(_settings, *, public):
+        assert public is True
+        return {"public_url": "https://abc.ngrok.io", "virtual_key": "vk"}
+
+    monkeypatch.setattr("local_llm_proxy.cli.restart_proxy", _restart)
+
+    result = CliRunner().invoke(cli, ["setup", "restart", "--public"])
+    assert result.exit_code == 0
+    assert "| Field" in result.output
+    assert "LiteLLM local endpoint" in result.output
+    assert "http://localhost:4000" in result.output
+    assert "LiteLLM local admin URL" in result.output
+    assert "http://localhost:4000/ui/" in result.output
+    assert "Public ngrok URL" in result.output
+    assert "https://abc.ngrok.io" in result.output
+    assert "Ngrok admin URL" in result.output
+    assert "http://localhost:4040" in result.output
+    assert "LiteLLM public admin URL" in result.output
+    assert "https://abc.ngrok.io/ui/" in result.output
+    assert "Virtual key" in result.output
+    assert "vk" in result.output
+
+
+def test_setup_status_with_public_url(monkeypatch) -> None:
+    monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings)
+    monkeypatch.setattr(
+        "local_llm_proxy.cli.get_proxy_status",
+        lambda _settings: {
+            "local_endpoint": "http://localhost:4000",
+            "local_admin_url": "http://localhost:4000/ui/",
+            "ngrok_admin_url": "http://localhost:4040",
+            "public_url": "https://abc.ngrok.io",
+            "virtual_key": "vk",
+        },
+    )
+
+    result = CliRunner().invoke(cli, ["setup", "status"])
+    assert result.exit_code == 0
+    assert "| Field" in result.output
+    assert "LiteLLM local endpoint" in result.output
+    assert "http://localhost:4000" in result.output
+    assert "LiteLLM local admin URL" in result.output
+    assert "http://localhost:4000/ui/" in result.output
+    assert "Ngrok admin URL" in result.output
+    assert "http://localhost:4040" in result.output
+    assert "Public ngrok URL" in result.output
+    assert "https://abc.ngrok.io" in result.output
+    assert "LiteLLM public admin URL" in result.output
+    assert "https://abc.ngrok.io/ui/" in result.output
+    assert "Virtual key" in result.output
+    assert "vk" in result.output
+
+
+def test_setup_status_without_public_url_or_virtual_key(monkeypatch) -> None:
+    monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings)
+    monkeypatch.setattr(
+        "local_llm_proxy.cli.get_proxy_status",
+        lambda _settings: {
+            "local_endpoint": "http://localhost:4000",
+            "local_admin_url": "http://localhost:4000/ui/",
+            "ngrok_admin_url": "http://localhost:4040",
+            "public_url": "",
+            "virtual_key": "",
+        },
+    )
+
+    result = CliRunner().invoke(cli, ["setup", "status"])
+    assert result.exit_code == 0
+    assert "| Field" in result.output
+    assert "LiteLLM local endpoint" in result.output
+    assert "http://localhost:4000" in result.output
+    assert "LiteLLM local admin URL" in result.output
+    assert "http://localhost:4000/ui/" in result.output
+    assert "Ngrok admin URL" in result.output
+    assert "http://localhost:4040" in result.output
+    assert "Public ngrok URL" not in result.output
+    assert "LiteLLM public admin URL" not in result.output
+    assert "Virtual key" in result.output
+    assert "(not found)" in result.output
 
 
 def test_validate_command_success(monkeypatch) -> None:

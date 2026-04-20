@@ -2,7 +2,6 @@
 services:
   litellm:
     image: ghcr.io/berriai/litellm:v1.83.7-stable
-    container_name: litellm-proxy
     volumes:
       - ${LITELLM_CONFIG_FILE:-./litellm-config.yaml}:/app/config.yaml
     ports:
@@ -25,7 +24,7 @@ services:
         - CMD-SHELL
         - >-
           python -c "import urllib.request;
-          urllib.request.urlopen('http://localhost:4000/health')"
+          urllib.request.urlopen('http://localhost:4000/health/readiness')"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,7 +34,6 @@ services:
 
   db:
     image: postgres:16.13
-    container_name: litellm-db
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-[REDACTED]}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-[REDACTED]}
@@ -54,7 +52,6 @@ services:
   ngrok:
     profiles: ["public"]
     image: ngrok/ngrok:3.37.6-alpine
-    container_name: ngrok-tunnel
     environment:
       - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
     command: ["http", "litellm:4000"]

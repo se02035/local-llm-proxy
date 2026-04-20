@@ -60,9 +60,17 @@ def _normalize_ping_host(ollama_host: str) -> str:
 
 
 def validate_setup(settings: Settings) -> ValidationResult:
+    """Validate host Ollama reachability and LiteLLM chat completion flow.
+
+    Args:
+        settings: Loaded runtime settings, including hosts, ports, and API keys.
+
+    Returns:
+        ValidationResult: Model metadata and generated completion content.
+    """
     if not settings.litellm_master_key:
         raise RuntimeError(
-            "LITELLM_MASTER_KEY is not set or is empty. Set it in config/.env and retry."
+            "LITELLM_MASTER_KEY is not set or is empty. Set it in .env and retry."
         )
     ping_host = _normalize_ping_host(settings.ollama_host)
     model = settings.ollama_model

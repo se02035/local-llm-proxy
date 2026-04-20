@@ -13,6 +13,8 @@ from local_llm_proxy.config import Settings
 from local_llm_proxy.logging_utils import log
 from local_llm_proxy.services.process_utils import run_command
 
+_COMPOSE_PROJECT_NAME = "local-llm-proxy"
+
 
 def start_proxy(
     settings: Settings,
@@ -21,22 +23,39 @@ def start_proxy(
     public: bool = False,
     timeout_seconds: int = 30,
 ) -> dict[str, str]:
-    """Start docker services and return discovered connection details."""
+    """Start docker services and return discovered connection details.
+
+    Args:
+        settings: Loaded settings with compose, env, and proxy metadata.
+        litellm_config_file: Optional custom LiteLLM YAML path for container config.
+        public: Whether to enable the ngrok public tunnel profile.
+        timeout_seconds: Maximum seconds to wait for readiness checks.
+
+    Returns:
+        dict[str, str]: Keys `public_url` and `virtual_key` for the active session.
+    """
     log("Starting LiteLLM Proxy services...")
-    command = [
-        "docker",
-        "compose",
-        "-f",
-        str(settings.compose_file),
-        "--env-file",
-        str(settings.env_file),
-    ]
+    compose_command = _compose_command(settings, public=public)
+    command = [*compose_command, "up", "-d"]
+    compose_env = None
     if litellm_config_file is not None:
-        command.extend(["-e", f"LITELLM_CONFIG_FILE={litellm_config_file}"])
-    if public:
-        command.extend(["--profile", "public"])
-    command.extend(["up", "-d"])
-    run_command(command, error_prefix="Failed to start docker compose services")
+        compose_env = {"LITELLM_CONFIG_FILE": str(litellm_config_file)}
+    try:
+        run_command(
+            command,
+            error_prefix="Failed to start docker compose services",
+            env=compose_env,
+        )
+    except RuntimeError as exc:
+        diagnostics = _collect_compose_failure_diagnostics(settings, public=public)
+        guidance = _compose_failure_guidance(
+            error_message=str(exc),
+            diagnostics=diagnostics,
+            public=public,
+        )
+        if diagnostics:
+            raise RuntimeError(f"{guidance}\n\n{diagnostics}") from exc
+        raise RuntimeError(guidance) from exc
 
     _wait_for_readiness(port=settings.litellm_port, timeout_seconds=timeout_seconds)
     virtual_key = _seed_virtual_key(settings)
@@ -52,19 +71,19 @@ def start_proxy(
 
 
 def stop_proxy(settings: Settings) -> None:
-    """Stop docker services."""
+    """Stop docker services.
+
+    Args:
+        settings: Loaded settings with compose and env file paths.
+
+    Returns:
+        None: This function performs side effects only.
+    """
     log("Stopping LiteLLM Proxy services...")
+    # Include profiled services so `setup stop` always removes ngrok when present.
+    compose_command = _compose_command(settings, public=True)
     run_command(
-        [
-            "docker",
-            "compose",
-            "-f",
-            str(settings.compose_file),
-            "--env-file",
-            str(settings.env_file),
-            "down",
-            "--remove-orphans",
-        ],
+        [*compose_command, "down", "--remove-orphans"],
         error_prefix="Failed to stop docker compose services",
     )
     log("Teardown complete.")
@@ -77,13 +96,147 @@ def restart_proxy(
     public: bool = False,
     timeout_seconds: int = 30,
 ) -> dict[str, str]:
-    """Restart docker services."""
+    """Restart docker services.
+
+    Args:
+        settings: Loaded settings with compose, env, and proxy metadata.
+        litellm_config_file: Optional custom LiteLLM YAML path for container config.
+        public: Whether to enable the ngrok public tunnel profile.
+        timeout_seconds: Maximum seconds to wait for readiness checks.
+
+    Returns:
+        dict[str, str]: Keys `public_url` and `virtual_key` for the restarted session.
+    """
     stop_proxy(settings)
     return start_proxy(
         settings,
         litellm_config_file=litellm_config_file,
         public=public,
         timeout_seconds=timeout_seconds,
+    )
+
+
+def get_proxy_status(settings: Settings) -> dict[str, str]:
+    """Return user-facing status details for the current proxy setup.
+
+    Args:
+        settings: Loaded settings with file paths and port configuration.
+
+    Returns:
+        dict[str, str]: Local and ngrok URLs plus the cached virtual key, if present.
+    """
+    local_endpoint = f"http://localhost:{settings.litellm_port}"
+    status = {
+        "local_endpoint": local_endpoint,
+        "local_admin_url": f"{local_endpoint}/ui/",
+        "ngrok_admin_url": "http://localhost:4040",
+        "public_url": "",
+        "virtual_key": "",
+    }
+
+    if settings.virtual_key_file.exists():
+        status["virtual_key"] = settings.virtual_key_file.read_text(encoding="utf-8").strip()
+
+    try:
+        response = requests.get("http://localhost:4040/api/tunnels", timeout=1)
+        if response.ok:
+            data = response.json()
+            tunnels: list[dict[str, Any]] = data.get("tunnels", [])
+            if tunnels:
+                public_url = tunnels[0].get("public_url")
+                if public_url:
+                    status["public_url"] = str(public_url)
+    except (requests.RequestException, ValueError, TypeError, json.JSONDecodeError):
+        pass
+
+    return status
+
+
+def _compose_command(settings: Settings, *, public: bool) -> list[str]:
+    command = [
+        "docker",
+        "compose",
+        "-p",
+        _COMPOSE_PROJECT_NAME,
+        "-f",
+        str(settings.compose_file),
+        "--env-file",
+        str(settings.env_file),
+    ]
+    if public:
+        command.extend(["--profile", "public"])
+    return command
+
+
+def _collect_compose_failure_diagnostics(settings: Settings, *, public: bool) -> str:
+    diagnostics: list[str] = []
+    compose_command = _compose_command(settings, public=public)
+    diagnostic_commands: list[tuple[str, list[str]]] = [
+        ("docker compose ps --all", ["ps", "--all"]),
+        ("docker compose logs --no-color --tail 120", ["logs", "--no-color", "--tail", "120"]),
+    ]
+
+    for label, args in diagnostic_commands:
+        try:
+            result = run_command([*compose_command, *args], capture_output=True)
+        except RuntimeError as exc:
+            diagnostics.append(f"{label}: unavailable ({exc})")
+            continue
+
+        detail = ((result.stdout or "").strip() or (result.stderr or "").strip()).strip()
+        if detail:
+            diagnostics.append(f"{label}:\n{detail}")
+
+    if not diagnostics:
+        return ""
+    return "Additional docker compose diagnostics:\n\n" + "\n\n".join(diagnostics)
+
+
+def _compose_failure_guidance(*, error_message: str, diagnostics: str, public: bool) -> str:
+    combined = f"{error_message}\n{diagnostics}".lower()
+    suggestions: list[str] = []
+
+    if "cannot connect to the docker daemon" in combined or "is the docker daemon running" in combined:
+        suggestions.append("Docker daemon is not reachable. Start Docker Desktop (or the daemon) and retry.")
+    if "port is already allocated" in combined or "address already in use" in combined:
+        suggestions.append(
+            "A required port is already in use. Free the conflicting port or change `LITELLM_PORT` in `.env`."
+        )
+    if "invalid mount config" in combined or "bind source path does not exist" in combined:
+        suggestions.append(
+            "The configured LiteLLM config file path is invalid. Verify `--litellm-config` points to an existing file."
+        )
+    if "litellm-proxy is unhealthy" in combined or "litellm-proxy unhealthy" in combined:
+        suggestions.append(
+            "Container `litellm-proxy` became unhealthy. Check env values in `.env` (especially `OLLAMA_HOST`, model aliases, and `LITELLM_MASTER_KEY`)."
+        )
+    if "ngrok" in combined and ("authtoken" in combined or "authentication failed" in combined):
+        suggestions.append(
+            "`ngrok` failed authentication. Set a valid `NGROK_AUTHTOKEN` in `.env` before using `--public`."
+        )
+    if "pull access denied" in combined or "manifest unknown" in combined:
+        suggestions.append(
+            "Docker image pull failed. Check your network connectivity and confirm image names are valid."
+        )
+
+    if not suggestions:
+        suggestions.append(
+            "Run `docker compose -p local-llm-proxy -f config/docker-compose.yml --env-file .env ps --all` and inspect the unhealthy/exited service."
+        )
+        suggestions.append(
+            "Run `docker compose -p local-llm-proxy -f config/docker-compose.yml --env-file .env logs --no-color --tail 120` to view startup failures."
+        )
+        if public:
+            suggestions.append(
+                "If using `--public`, verify `NGROK_AUTHTOKEN` is set correctly and that port 4040 is available."
+            )
+
+    bullets = "\n".join(f"- {item}" for item in suggestions)
+    return (
+        "Failed to start docker compose services.\n"
+        "Actionable next steps:\n"
+        f"{bullets}\n"
+        f"Original error: {error_message}"
     )
 
 
@@ -122,7 +275,9 @@ def _seed_virtual_key(settings: Settings) -> str:
     if not settings.litellm_master_key:
         return ""
     if settings.virtual_key_file.exists():
-        return settings.virtual_key_file.read_text(encoding="utf-8").strip()
+        cached_key = settings.virtual_key_file.read_text(encoding="utf-8").strip()
+        if cached_key and _is_virtual_key_valid(settings, cached_key):
+            return cached_key
 
     headers = {"Authorization": f"Bearer {settings.litellm_master_key}"}
     base = f"http://localhost:{settings.litellm_port}"
@@ -153,6 +308,19 @@ def _seed_virtual_key(settings: Settings) -> str:
         raise RuntimeError("Failed to generate LiteLLM virtual key.")
     _write_virtual_key(settings.virtual_key_file, str(virtual_key))
     return str(virtual_key)
+
+
+def _is_virtual_key_valid(settings: Settings, key: str) -> bool:
+    base = f"http://localhost:{settings.litellm_port}"
+    try:
+        response = requests.get(
+            f"{base}/v1/models",
+            headers={"Authorization": f"Bearer {key}"},
+            timeout=5,
+        )
+        return response.ok
+    except requests.RequestException:
+        return False
 
 
 def _write_virtual_key(path: Path, value: str) -> None:

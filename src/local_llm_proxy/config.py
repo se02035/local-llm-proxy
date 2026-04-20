@@ -11,7 +11,7 @@ _REPO_MARKERS = (".git", "pyproject.toml", "setup.cfg")
 
 @dataclass(frozen=True)
 class Settings:
-    """Paths and values loaded from `config/.env` at the repository root."""
+    """Paths and values loaded from `.env` at the repository root."""
 
     repo_root: Path
     config_dir: Path
@@ -46,9 +46,17 @@ def _normalize_env_value(value: object | None) -> str:
 
 
 def load_settings() -> Settings:
+    """Load runtime settings from the repository `.env` file.
+
+    Args:
+        None.
+
+    Returns:
+        Settings: Resolved filesystem paths and normalized environment values.
+    """
     repo_root = _repo_root()
     config_dir = repo_root / "config"
-    env_file = config_dir / ".env"
+    env_file = repo_root / ".env"
     env_values = dotenv_values(env_file) if env_file.exists() else {}
 
     ollama_model = _normalize_env_value(env_values.get("OLLAMA_MODEL")) or "gemma3:4b"

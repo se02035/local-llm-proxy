@@ -1,5 +1,9 @@
-config/.env
 config/.litellm_virtual_key
 
 __pycache__/
 *.py[cod]
+
+.venv
+*.egg-info
+
+.env
