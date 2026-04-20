@@ -11,7 +11,21 @@ _REPO_MARKERS = (".git", "pyproject.toml", "setup.cfg")
 
 @dataclass(frozen=True)
 class Settings:
-    """Paths and values loaded from `.env` at the repository root."""
+    """Container for resolved runtime configuration values.
+
+    Attributes:
+        repo_root (Path): Absolute path to the repository root directory.
+        config_dir (Path): Absolute path to the repository `config` directory.
+        env_file (Path): Absolute path to the root `.env` file used for loading settings.
+        compose_file (Path): Absolute path to the Docker Compose file for proxy services.
+        virtual_key_file (Path): Absolute path to the cached LiteLLM virtual key file.
+        ollama_model (str): Default Ollama model name used for local inference.
+        ollama_host (str): Ollama base URL reachable from the proxy runtime.
+        litellm_port (str): Host port value exposed for the LiteLLM proxy service.
+        litellm_master_key (str): Master API key used to authenticate LiteLLM admin calls.
+        litellm_ollama_model (str): LiteLLM provider-prefixed model identifier for Ollama.
+        litellm_model_name (str): LiteLLM alias name exposed through the proxy model list.
+    """
 
     repo_root: Path
     config_dir: Path

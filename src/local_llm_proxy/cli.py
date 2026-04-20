@@ -206,13 +206,19 @@ def setup_restart(public: bool, litellm_config_file: Path | None) -> None:
 
     Args:
         public: Whether to expose the proxy through ngrok.
+        litellm_config_file: Optional relative or absolute path to LiteLLM config YAML.
 
     Returns:
         None: Writes endpoint and key details to the terminal.
     """
     settings = load_settings()
+    config_path = litellm_config_file
+    if config_path is not None and not config_path.is_absolute():
+        config_path = settings.repo_root / config_path
+    if config_path is not None and not config_path.exists():
+        raise click.ClickException(f"LiteLLM config file not found: {config_path}")
     try:
-        result = restart_proxy(settings, litellm_config_file=litellm_config_file, public=public)
+        result = restart_proxy(settings, litellm_config_file=config_path, public=public)
     except RuntimeError as exc:
         err(str(exc))
         raise click.ClickException(str(exc)) from exc

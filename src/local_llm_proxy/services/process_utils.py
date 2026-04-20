@@ -36,9 +36,7 @@ def run_command(
     """
     if not command:
         detail = "Invalid empty command list."
-        if error_prefix:
-            detail = f"{error_prefix}: {detail}"
-        raise ValueError(detail)
+        raise _format_runtime_error(error_prefix, detail)
 
     merged_env = None if env is None else {**os.environ, **env}
     trace(

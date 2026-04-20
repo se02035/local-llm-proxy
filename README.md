@@ -26,9 +26,12 @@ The goal is a single, repeatable workflow (no shell scripts): keep runtime confi
 From the repository root:
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate
 python -m pip install -e ".[dev]"
 ```
 
+Use a dedicated virtual environment for this project before installing dependencies.
 This installs the `local-llm-proxy` command and development dependencies (`pytest`, `ruff`, `pre-commit`).
 
 ## Configuration

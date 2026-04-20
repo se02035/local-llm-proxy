@@ -31,10 +31,45 @@ def test_run_command_wraps_missing_binary() -> None:
 
 
 def test_run_command_rejects_empty_command() -> None:
-    with pytest.raises(ValueError, match="Invalid empty command list"):
+    with pytest.raises(RuntimeError, match="Invalid empty command list"):
         process_utils.run_command([])
 
 
 def test_run_command_rejects_empty_command_with_prefix() -> None:
-    with pytest.raises(ValueError, match="setup start: Invalid empty command list"):
+    with pytest.raises(RuntimeError, match="setup start: Invalid empty command list"):
         process_utils.run_command([], error_prefix="setup start")
+
+
+@pytest.mark.parametrize("error_prefix", [None, "", "setup start"])
+def test_run_command_wraps_timeout_expired(
+    monkeypatch: pytest.MonkeyPatch,
+    error_prefix: str | None,
+) -> None:
+    traces: list[tuple[str, dict[str, object]]] = []
+
+    def _trace(message: str, **kwargs: object) -> None:
+        traces.append((message, kwargs))
+
+    def _raise_timeout(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd=["echo", "hi"], timeout=1)
+
+    monkeypatch.setattr(process_utils, "trace", _trace)
+    monkeypatch.setattr(process_utils.subprocess, "run", _raise_timeout)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        process_utils.run_command(["echo", "hi"], error_prefix=error_prefix)
+
+    expected_detail = "Command timed out: echo hi"
+    message = str(exc_info.value)
+    assert expected_detail in message
+    if error_prefix:
+        assert message == f"{error_prefix}: {expected_detail}"
+    else:
+        assert message == expected_detail
+
+    assert traces
+    assert traces[0][0] == "Executing command"
+    assert traces[0][1]["command"] == ["echo", "hi"]
+    assert traces[1][0] == "Command timed out"
+    assert traces[1][1]["command"] == ["echo", "hi"]
+    assert traces[1][1]["detail"] == expected_detail
