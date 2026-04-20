@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
 
 from local_llm_proxy.config import load_settings
@@ -20,11 +22,24 @@ def setup() -> None:
 
 
 @setup.command("start")
-def setup_start() -> None:
+@click.option(
+    "--litellm-config",
+    "litellm_config_file",
+    type=click.Path(path_type=Path),
+    default=Path("config/litellm-config.yaml"),
+    show_default=True,
+    help="Path to LiteLLM config YAML used by the proxy container.",
+)
+def setup_start(litellm_config_file: Path) -> None:
     """Start proxy services."""
     settings = load_settings()
+    config_path = litellm_config_file
+    if not config_path.is_absolute():
+        config_path = settings.repo_root / config_path
+    if not config_path.exists():
+        raise click.ClickException(f"LiteLLM config file not found: {config_path}")
     try:
-        result = start_proxy(settings)
+        result = start_proxy(settings, litellm_config_file=config_path)
     except RuntimeError as exc:
         err(str(exc))
         raise click.ClickException(str(exc)) from exc

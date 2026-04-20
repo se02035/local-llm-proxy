@@ -34,7 +34,7 @@ def test_start_proxy_happy_path(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(proxy, "_seed_virtual_key", lambda *_: "vk")
     monkeypatch.setattr(proxy, "_wait_for_ngrok_url", lambda **kwargs: "https://example.ngrok.io")
 
-    result = proxy.start_proxy(settings)
+    result = proxy.start_proxy(settings, litellm_config_file=Path("/tmp/litellm.yaml"))
 
     assert result == {"public_url": "https://example.ngrok.io", "virtual_key": "vk"}
     assert commands == [
@@ -45,6 +45,8 @@ def test_start_proxy_happy_path(monkeypatch, tmp_path: Path) -> None:
             str(settings.compose_file),
             "--env-file",
             str(settings.env_file),
+            "-e",
+            "LITELLM_CONFIG_FILE=/tmp/litellm.yaml",
             "up",
             "-d",
         ]

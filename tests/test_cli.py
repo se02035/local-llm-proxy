@@ -22,29 +22,57 @@ def _settings() -> Settings:
     )
 
 
-def test_setup_start_success(monkeypatch) -> None:
+def test_setup_start_success(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings)
-    monkeypatch.setattr(
-        "local_llm_proxy.cli.start_proxy",
-        lambda _settings: {"public_url": "https://abc.ngrok.io", "virtual_key": "vk"},
-    )
 
-    result = CliRunner().invoke(cli, ["setup", "start"])
+    config_file = tmp_path / "litellm.yaml"
+    config_file.write_text("model_list: []\n", encoding="utf-8")
+
+    captured: dict[str, object] = {}
+
+    def _start(_settings, *, litellm_config_file):
+        captured["path"] = litellm_config_file
+        return {"public_url": "https://abc.ngrok.io", "virtual_key": "vk"}
+
+    monkeypatch.setattr("local_llm_proxy.cli.start_proxy", _start)
+
+    result = CliRunner().invoke(
+        cli,
+        ["setup", "start", "--litellm-config", str(config_file)],
+    )
     assert result.exit_code == 0
     assert "Public ngrok URL: https://abc.ngrok.io" in result.output
+    assert captured["path"] == config_file
 
 
-def test_setup_start_failure(monkeypatch) -> None:
+def test_setup_start_failure(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings)
 
-    def _raise(_settings) -> None:
+    config_file = tmp_path / "litellm.yaml"
+    config_file.write_text("model_list: []\n", encoding="utf-8")
+
+    def _raise(_settings, *, litellm_config_file) -> None:
+        _ = litellm_config_file
         raise RuntimeError("boom")
 
     monkeypatch.setattr("local_llm_proxy.cli.start_proxy", _raise)
 
-    result = CliRunner().invoke(cli, ["setup", "start"])
+    result = CliRunner().invoke(
+        cli,
+        ["setup", "start", "--litellm-config", str(config_file)],
+    )
     assert result.exit_code != 0
     assert "boom" in result.output
+
+
+def test_setup_start_missing_config_file(monkeypatch) -> None:
+    monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings)
+    result = CliRunner().invoke(
+        cli,
+        ["setup", "start", "--litellm-config", "does-not-exist.yaml"],
+    )
+    assert result.exit_code != 0
+    assert "LiteLLM config file not found" in result.output
 
 
 def test_validate_command_success(monkeypatch) -> None:

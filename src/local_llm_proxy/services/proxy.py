@@ -12,22 +12,26 @@ from local_llm_proxy.logging_utils import log
 from local_llm_proxy.services.process_utils import run_command
 
 
-def start_proxy(settings: Settings, *, timeout_seconds: int = 30) -> dict[str, str]:
+def start_proxy(
+    settings: Settings,
+    *,
+    litellm_config_file: Path | None = None,
+    timeout_seconds: int = 30,
+) -> dict[str, str]:
     """Start docker services and return discovered connection details."""
     log("Starting LiteLLM Proxy and Ngrok tunnel...")
-    run_command(
-        [
-            "docker",
-            "compose",
-            "-f",
-            str(settings.compose_file),
-            "--env-file",
-            str(settings.env_file),
-            "up",
-            "-d",
-        ],
-        error_prefix="Failed to start docker compose services",
-    )
+    command = [
+        "docker",
+        "compose",
+        "-f",
+        str(settings.compose_file),
+        "--env-file",
+        str(settings.env_file),
+    ]
+    if litellm_config_file is not None:
+        command.extend(["-e", f"LITELLM_CONFIG_FILE={litellm_config_file}"])
+    command.extend(["up", "-d"])
+    run_command(command, error_prefix="Failed to start docker compose services")
     _wait_for_readiness(port=settings.litellm_port, timeout_seconds=timeout_seconds)
     virtual_key = _seed_virtual_key(settings)
     public_url = _wait_for_ngrok_url(timeout_seconds=10)
@@ -54,10 +58,19 @@ def stop_proxy(settings: Settings) -> None:
     log("Teardown complete.")
 
 
-def restart_proxy(settings: Settings, *, timeout_seconds: int = 30) -> dict[str, str]:
+def restart_proxy(
+    settings: Settings,
+    *,
+    litellm_config_file: Path | None = None,
+    timeout_seconds: int = 30,
+) -> dict[str, str]:
     """Restart docker services."""
     stop_proxy(settings)
-    return start_proxy(settings, timeout_seconds=timeout_seconds)
+    return start_proxy(
+        settings,
+        litellm_config_file=litellm_config_file,
+        timeout_seconds=timeout_seconds,
+    )
 
 
 def _wait_for_readiness(*, port: str, timeout_seconds: int) -> None:

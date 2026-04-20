@@ -40,14 +40,14 @@ This installs the `local-llm-proxy` command and development dependencies (`pytes
 
 2. Edit `config/.env` with your values (admin key for the proxy, database credentials, ngrok token, and the settings your compose file expects). See comments in `config/.env.example`.
 
-3. **LiteLLM routing** is defined in `config/litellm-config.yaml`. Align the Ollama-related variables in `.env` with how your containers reach the host Ollama service (see comments in `config/.env.example`).
+3. **LiteLLM routing** is defined in a YAML file passed to `setup start` with `--litellm-config` (default: `config/litellm-config.yaml`). Align the Ollama-related variables in `.env` with how your containers reach the host Ollama service (see comments in `config/.env.example`).
 
 ## Using the CLI
 
 **Start** the stack (Compose project rooted at `config/`):
 
 ```bash
-local-llm-proxy setup start
+local-llm-proxy setup start --litellm-config config/litellm-config.yaml
 ```
 
 **Stop**:
