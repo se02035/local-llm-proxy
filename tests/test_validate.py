@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from local_llm_proxy.config import Settings
+from local_llm_proxy.services.validate import validate_setup
+
+
+class DummyResponse:
+    def __init__(self, payload: dict, status_ok: bool = True) -> None:
+        self._payload = payload
+        self.ok = status_ok
+
+    def raise_for_status(self) -> None:
+        if not self.ok:
+            raise RuntimeError("http error")
+
+    def json(self) -> dict:
+        return self._payload
+
+
+def _settings() -> Settings:
+    return Settings(
+        script_dir=Path("/tmp"),
+        config_dir=Path("/tmp"),
+        env_file=Path("/tmp/.env"),
+        compose_file=Path("/tmp/docker-compose.yml"),
+        virtual_key_file=Path("/tmp/.litellm_virtual_key"),
+        ollama_model="gemma3:4b",
+        ollama_host="http://localhost:11434",
+        litellm_port="4000",
+        litellm_master_key="master",
+    )
+
+
+def test_validate_setup_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = _settings()
+
+    monkeypatch.setattr("local_llm_proxy.services.validate.command_exists", lambda _: True)
+
+    def fake_get(url: str, timeout: tuple[int, int]) -> DummyResponse:
+        assert url.endswith("/api/tags")
+        assert timeout == (5, 10)
+        return DummyResponse({})
+
+    def fake_post(
+        url: str, headers: dict[str, str], json: dict, timeout: tuple[int, int]
+    ) -> DummyResponse:
+        assert "chat/completions" in url
+        assert headers["Authorization"] == "Bearer master"
+        assert json["model"] == "gemma3:4b.local"
+        assert timeout == (5, 30)
+        return DummyResponse({"choices": [{"message": {"content": "hello world"}}]})
+
+    monkeypatch.setattr("local_llm_proxy.services.validate.requests.get", fake_get)
+    monkeypatch.setattr("local_llm_proxy.services.validate.requests.post", fake_post)
+
+    result = validate_setup(settings)
+    assert result.content == "hello world"
+    assert result.model == "gemma3:4b"
+
+
+def test_validate_setup_requires_master_key() -> None:
+    settings = _settings()
+    settings = Settings(
+        script_dir=settings.script_dir,
+        config_dir=settings.config_dir,
+        env_file=settings.env_file,
+        compose_file=settings.compose_file,
+        virtual_key_file=settings.virtual_key_file,
+        ollama_model=settings.ollama_model,
+        ollama_host=settings.ollama_host,
+        litellm_port=settings.litellm_port,
+        litellm_master_key="",
+    )
+    with pytest.raises(RuntimeError, match="LITELLM_MASTER_KEY"):
+        validate_setup(settings)
+
+
+def test_validate_setup_requires_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings()
+    monkeypatch.setattr("local_llm_proxy.services.validate.command_exists", lambda _: False)
+    with pytest.raises(RuntimeError, match="curl"):
+        validate_setup(settings)
