@@ -66,6 +66,6 @@ jobs:
       - name: Validate docker compose
         run: |
           docker compose \
-            --env-file config/.env.example \
+            --env-file .env.example \
             -f config/docker-compose.yml \
             config -q

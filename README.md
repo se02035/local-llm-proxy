@@ -10,7 +10,7 @@ The goal is a single, repeatable workflow (no shell scripts): configure files un
 |------|---------|
 | `src/local_llm_proxy/` | Click CLI and service logic |
 | `config/` | Docker Compose, LiteLLM YAML, and environment templates |
-| `config/.env` | Your local secrets (copy from `config/.env.example`; gitignored) |
+| `config/.env` | Your local secrets (copy from `.env.example`; gitignored) |
 | `tests/` | Pytest unit tests |
 
 ## Prerequisites
@@ -35,12 +35,12 @@ This installs the `local-llm-proxy` command and development dependencies (`pytes
 1. Copy the example environment file:
 
    ```bash
-   cp config/.env.example config/.env
+   cp .env.example config/.env
    ```
 
-2. Edit `config/.env` with your values (admin key for the proxy, database credentials, ngrok token, and the settings your compose file expects). See comments in `config/.env.example`.
+2. Edit `config/.env` with your values (admin key for the proxy, database credentials, ngrok token, and the settings your compose file expects). See comments in `.env.example`.
 
-3. **LiteLLM routing** is defined in a YAML file passed to `setup start` with optional `--litellm-config` (if omitted, default `config/litellm-config.yaml` is used). Align the Ollama-related variables in `.env` with how your containers reach the host Ollama service (see comments in `config/.env.example`).
+3. **LiteLLM routing** is defined in a YAML file passed to `setup start` with optional `--litellm-config` (if omitted, default `config/litellm-config.yaml` is used). Align the Ollama-related variables in `.env` with how your containers reach the host Ollama service (see comments in `.env.example`).
 
 ## Using the CLI
 
