@@ -1,0 +1,5 @@
+extends:
+  - ../../.yamllint
+
+rules:
+  indentation: disable
