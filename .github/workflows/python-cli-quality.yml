@@ -11,6 +11,7 @@ on:
       - '.pre-commit-config.yaml'
       - '.github/workflows/python-cli-quality.yml'
       - '.coderabbit.yaml'
+      - '.env.example'
 
 jobs:
   pre-commit:

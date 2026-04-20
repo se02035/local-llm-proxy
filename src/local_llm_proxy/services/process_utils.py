@@ -20,6 +20,7 @@ def run_command(
     capture_output: bool = False,
     error_prefix: str | None = None,
     env: Mapping[str, str] | None = None,
+    timeout: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run a subprocess command and normalize common failures.
 
@@ -28,6 +29,7 @@ def run_command(
         capture_output: Whether to capture stdout/stderr on completion.
         error_prefix: Optional prefix prepended to raised runtime errors.
         env: Optional environment variables merged with the current process env.
+        timeout: Optional timeout for the subprocess command.
 
     Returns:
         subprocess.CompletedProcess[str]: Completed subprocess result object.
@@ -46,6 +48,7 @@ def run_command(
             text=True,
             capture_output=capture_output,
             env=merged_env,
+            timeout=timeout,
         )
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or str(exc)).strip()

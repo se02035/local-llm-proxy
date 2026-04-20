@@ -31,7 +31,10 @@ def _repo_root() -> Path:
     for parent in current.parents:
         if any((parent / marker).exists() for marker in _REPO_MARKERS):
             return parent
-    return Path(__file__).resolve().parents[2]
+    raise RuntimeError(
+        f"In `_repo_root()`, no repository root found for path: {current}. "
+        f"Searched for markers: {', '.join(_REPO_MARKERS)}."
+    )
 
 
 def _normalize_env_value(value: object | None) -> str:

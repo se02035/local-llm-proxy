@@ -15,7 +15,7 @@ services:
       - OLLAMA_HOST=${OLLAMA_HOST:-[REDACTED]}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-[REDACTED]}
       - LITELLM_OLLAMA_MODEL=${LITELLM_OLLAMA_MODEL:-ollama/[REDACTED]}
-      - LITELLM_MODEL_NAME=${LITELLM_OLLAMA_MODEL:-ollama/[REDACTED]}.ollama
+      - LITELLM_MODEL_NAME=${LITELLM_MODEL_NAME:-${LITELLM_OLLAMA_MODEL:-ollama/[REDACTED]}.ollama}
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
