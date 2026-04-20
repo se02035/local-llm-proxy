@@ -5,9 +5,9 @@ description = "CLI for managing local LiteLLM proxy and Ollama models."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "click",
-  "python-dotenv",
-  "requests",
+  "click==8.3.2",
+  "python-dotenv==1.2.2",
+  "requests==2.33.1",
 ]
 
 [build-system]
@@ -16,9 +16,9 @@ build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
 dev = [
-  "pytest",
-  "ruff",
-  "pre-commit",
+  "pytest==9.0.3",
+  "ruff==0.15.11",
+  "pre-commit==4.5.1",
 ]
 
 [project.scripts]

@@ -47,8 +47,8 @@ def setup_start(litellm_config_file: Path, public: bool) -> None:
     try:
         result = start_proxy(settings, litellm_config_file=config_path, public=public)
     except RuntimeError as exc:
-        err(str(exc))
-        raise click.ClickException(str(exc)) from exc
+        err(f"Failed to stop proxy: {exc}")
+        raise click.ClickException(f"Failed to stop proxy: {exc}") from exc
 
     if public and result["public_url"]:
         click.echo(f"Public ngrok URL: {result['public_url']}")

@@ -102,5 +102,7 @@ def test_normalize_ping_host_only_rewrites_hostname() -> None:
         _normalize_ping_host("http://" + "host" + ".docker.internal:11434/api/tags?q=1")
         == "http://localhost:11434/api/tags?q=1"
     )
-    assert _normalize_ping_host("http://api-ollama.example:11434") == "http://api-ollama.example:11434"
+    assert (
+        _normalize_ping_host("http://api-ollama.example:11434") == "http://api-ollama.example:11434"
+    )
     assert _normalize_ping_host("http://ollama:11434") == "http://localhost:11434"

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -129,9 +131,7 @@ def _seed_virtual_key(settings: Settings) -> str:
         models_response = requests.get(f"{base}/v1/models", headers=headers, timeout=5)
         models_response.raise_for_status()
         model_ids = [
-            item.get("id")
-            for item in models_response.json().get("data", [])
-            if item.get("id")
+            item.get("id") for item in models_response.json().get("data", []) if item.get("id")
         ]
 
         payload = {"models": model_ids, "key_alias": "local-proxy-key"}
@@ -157,5 +157,17 @@ def _seed_virtual_key(settings: Settings) -> str:
 
 def _write_virtual_key(path: Path, value: str) -> None:
     path.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
-    path.write_text(f"{value}\n", encoding="utf-8")
-    path.chmod(0o600)
+
+    fd, tmp_path = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent, text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as tmp_file:
+            tmp_file.write(f"{value}\n")
+            tmp_file.flush()
+            os.fsync(tmp_file.fileno())
+
+        os.chmod(tmp_path, 0o600)
+        os.replace(tmp_path, path)
+        path.chmod(0o600)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)

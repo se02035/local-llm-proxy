@@ -6,6 +6,7 @@ from pathlib import Path
 from dotenv import dotenv_values
 
 _REDACTED_SENTINELS = {"[REDACTED]", "<REDACTED>", "REDACTED"}
+_REPO_MARKERS = (".git", "pyproject.toml", "setup.cfg")
 
 
 @dataclass(frozen=True)
@@ -26,13 +27,19 @@ class Settings:
 
 
 def _repo_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if any((parent / marker).exists() for marker in _REPO_MARKERS):
+            return parent
+    return Path(__file__).resolve().parents[2]
 
 
 def _normalize_env_value(value: object | None) -> str:
     if value is None:
         return ""
     normalized = str(value).strip()
+    if not normalized:
+        return ""
     if normalized.upper() in _REDACTED_SENTINELS:
         return ""
     return normalized
@@ -52,8 +59,7 @@ def load_settings() -> Settings:
     litellm_port = _normalize_env_value(env_values.get("LITELLM_PORT")) or "4000"
     litellm_master_key = _normalize_env_value(env_values.get("LITELLM_MASTER_KEY"))
     litellm_ollama_model = (
-        _normalize_env_value(env_values.get("LITELLM_OLLAMA_MODEL"))
-        or f"ollama/{ollama_model}"
+        _normalize_env_value(env_values.get("LITELLM_OLLAMA_MODEL")) or f"ollama/{ollama_model}"
     )
     litellm_model_name = (
         _normalize_env_value(env_values.get("LITELLM_MODEL_NAME"))
