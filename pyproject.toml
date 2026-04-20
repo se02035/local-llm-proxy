@@ -35,4 +35,8 @@ target-version = "py310"
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.setuptools]
-packages = ["local_llm_proxy", "local_llm_proxy.services"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["local_llm_proxy*"]

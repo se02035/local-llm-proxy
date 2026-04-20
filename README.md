@@ -8,7 +8,7 @@ The goal is a single, repeatable workflow (no shell scripts): configure files un
 
 | Path | Purpose |
 |------|---------|
-| `local_llm_proxy/` | Click CLI and service logic |
+| `src/local_llm_proxy/` | Click CLI and service logic |
 | `config/` | Docker Compose, LiteLLM YAML, and environment templates |
 | `config/.env` | Your local secrets (copy from `config/.env.example`; gitignored) |
 | `tests/` | Pytest unit tests |

@@ -3,12 +3,13 @@ name: Python CLI Quality
 on:
   pull_request:
     paths:
-      - 'local_llm_proxy/**'
+      - 'src/local_llm_proxy/**'
       - 'tests/**'
       - 'config/**'
       - 'pyproject.toml'
       - '.pre-commit-config.yaml'
       - '.github/workflows/python-cli-quality.yml'
+      - '.coderabbit.yaml'
 
 jobs:
   quality:
