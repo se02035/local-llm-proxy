@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 
@@ -15,11 +16,47 @@ class ValidationResult:
 
 
 def _normalize_ping_host(ollama_host: str) -> str:
-    if "host.docker.internal" in ollama_host:
-        return ollama_host.replace("host.docker.internal", "localhost")
-    if "ollama" in ollama_host:
-        return ollama_host.replace("ollama", "localhost")
-    return ollama_host
+    host_input = ollama_host.strip()
+    if not host_input:
+        return host_input
+
+    parsed = urlsplit(host_input)
+    has_scheme = bool(parsed.scheme)
+    if not has_scheme:
+        parsed = urlsplit(f"//{host_input}")
+
+    if not parsed.hostname:
+        return host_input
+
+    mapped_host = parsed.hostname
+    if mapped_host in {"host.docker.internal", "ollama"}:
+        mapped_host = "localhost"
+
+    if mapped_host == parsed.hostname:
+        return host_input
+
+    userinfo = ""
+    if parsed.username:
+        userinfo = parsed.username
+        if parsed.password:
+            userinfo += f":{parsed.password}"
+        userinfo += "@"
+
+    port = f":{parsed.port}" if parsed.port else ""
+    netloc = f"{userinfo}{mapped_host}{port}"
+
+    rebuilt = urlunsplit(
+        (
+            parsed.scheme if has_scheme else "",
+            netloc,
+            parsed.path,
+            parsed.query,
+            parsed.fragment,
+        )
+    )
+    if not has_scheme and rebuilt.startswith("//"):
+        return rebuilt[2:]
+    return rebuilt
 
 
 def validate_setup(settings: Settings) -> ValidationResult:
@@ -39,11 +76,11 @@ def validate_setup(settings: Settings) -> ValidationResult:
     log("Ollama is running.")
 
     log(
-        f"2. Sending chat completion (alias model: {model}.local -> Ollama: {model}) "
+        f"2. Sending chat completion (alias model: {settings.litellm_model_name}) "
         f"to LiteLLM on port {settings.litellm_port}..."
     )
     response_body = {
-        "model": f"{model}.local",
+        "model": settings.litellm_model_name,
         "messages": [{"role": "user", "content": "Say 'hello world' and nothing else."}],
     }
     try:
@@ -63,7 +100,19 @@ def validate_setup(settings: Settings) -> ValidationResult:
         ) from exc
 
     payload = response.json()
-    content = payload.get("choices", [{}])[0].get("message", {}).get("content")
+    choices = payload.get("choices")
+    if not isinstance(choices, list) or not choices:
+        raise RuntimeError(f"Failed to get valid response from proxy. Full response: {payload}")
+
+    first_choice = choices[0]
+    if not isinstance(first_choice, dict):
+        raise RuntimeError(f"Failed to get valid response from proxy. Full response: {payload}")
+
+    message = first_choice.get("message")
+    if not isinstance(message, dict):
+        raise RuntimeError(f"Failed to get valid response from proxy. Full response: {payload}")
+
+    content = message.get("content")
     if not content:
         raise RuntimeError(f"Failed to get valid response from proxy. Full response: {payload}")
 

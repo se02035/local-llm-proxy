@@ -112,22 +112,31 @@ def _seed_virtual_key(settings: Settings) -> str:
 
     headers = {"Authorization": f"Bearer {settings.litellm_master_key}"}
     base = f"http://localhost:{settings.litellm_port}"
-    models_response = requests.get(f"{base}/v1/models", headers=headers, timeout=5)
-    models_response.raise_for_status()
-    model_ids = [
-        item.get("id")
-        for item in models_response.json().get("data", [])
-        if item.get("id")
-    ]
-    payload = {"models": model_ids, "key_alias": "local-proxy-key"}
-    key_response = requests.post(
-        f"{base}/key/generate",
-        headers={**headers, "Content-Type": "application/json"},
-        json=payload,
-        timeout=5,
-    )
-    key_response.raise_for_status()
-    virtual_key = key_response.json().get("key")
+
+    try:
+        models_response = requests.get(f"{base}/v1/models", headers=headers, timeout=5)
+        models_response.raise_for_status()
+        model_ids = [
+            item.get("id")
+            for item in models_response.json().get("data", [])
+            if item.get("id")
+        ]
+
+        payload = {"models": model_ids, "key_alias": "local-proxy-key"}
+        key_response = requests.post(
+            f"{base}/key/generate",
+            headers={**headers, "Content-Type": "application/json"},
+            json=payload,
+            timeout=5,
+        )
+        key_response.raise_for_status()
+
+        virtual_key = key_response.json().get("key")
+    except (requests.RequestException, ValueError, TypeError, KeyError) as exc:
+        raise RuntimeError(
+            f"Failed to seed LiteLLM virtual key on port {settings.litellm_port}: {exc}"
+        ) from exc
+
     if not virtual_key:
         raise RuntimeError("Failed to generate LiteLLM virtual key.")
     _write_virtual_key(settings.virtual_key_file, str(virtual_key))
@@ -135,5 +144,6 @@ def _seed_virtual_key(settings: Settings) -> str:
 
 
 def _write_virtual_key(path: Path, value: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
     path.write_text(f"{value}\n", encoding="utf-8")
+    path.chmod(0o600)

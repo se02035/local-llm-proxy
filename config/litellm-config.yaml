@@ -1,3 +1,4 @@
+---
 model_list:
   - model_name: os.environ/LITELLM_MODEL_NAME
     litellm_params:

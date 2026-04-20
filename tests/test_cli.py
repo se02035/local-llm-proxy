@@ -19,6 +19,8 @@ def _settings() -> Settings:
         ollama_host="http://localhost:11434",
         litellm_port="4000",
         litellm_master_key="master",
+        litellm_ollama_model="ollama/gemma3:12b",
+        litellm_model_name="ollama/gemma3:12b.ollama",
     )
 
 
@@ -63,6 +65,8 @@ def test_setup_start_uses_default_litellm_config(monkeypatch, tmp_path: Path) ->
             ollama_host="http://localhost:11434",
             litellm_port="4000",
             litellm_master_key="master",
+            litellm_ollama_model="ollama/gemma3:12b",
+            litellm_model_name="ollama/gemma3:12b.ollama",
         )
 
     monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings_local)
@@ -108,6 +112,18 @@ def test_setup_start_missing_config_file(monkeypatch) -> None:
     )
     assert result.exit_code != 0
     assert "LiteLLM config file not found" in result.output
+
+
+def test_setup_stop_runtime_error_is_click_exception(monkeypatch) -> None:
+    monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings)
+
+    def _raise(_settings) -> None:
+        raise RuntimeError("stop failed")
+
+    monkeypatch.setattr("local_llm_proxy.cli.stop_proxy", _raise)
+    result = CliRunner().invoke(cli, ["setup", "stop"])
+    assert result.exit_code != 0
+    assert "stop failed" in result.output
 
 
 def test_validate_command_success(monkeypatch) -> None:

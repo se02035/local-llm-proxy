@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from local_llm_proxy.config import Settings
-from local_llm_proxy.services.validate import validate_setup
+from local_llm_proxy.services.validate import _normalize_ping_host, validate_setup
 
 
 class DummyResponse:
@@ -32,6 +32,8 @@ def _settings() -> Settings:
         ollama_host="http://localhost:11434",
         litellm_port="4000",
         litellm_master_key="master",
+        litellm_ollama_model="ollama/gemma3:4b",
+        litellm_model_name="ollama/gemma3:4b.ollama",
     )
 
 
@@ -48,7 +50,7 @@ def test_validate_setup_success(monkeypatch: pytest.MonkeyPatch) -> None:
     ) -> DummyResponse:
         assert "chat/completions" in url
         assert headers["Authorization"] == "Bearer master"
-        assert json["model"] == "gemma3:4b.local"
+        assert json["model"] == "ollama/gemma3:4b.ollama"
         assert timeout == (5, 30)
         return DummyResponse({"choices": [{"message": {"content": "hello world"}}]})
 
@@ -72,8 +74,33 @@ def test_validate_setup_requires_master_key() -> None:
         ollama_host=settings.ollama_host,
         litellm_port=settings.litellm_port,
         litellm_master_key="",
+        litellm_ollama_model=settings.litellm_ollama_model,
+        litellm_model_name=settings.litellm_model_name,
     )
     with pytest.raises(RuntimeError, match="LITELLM_MASTER_KEY"):
         validate_setup(settings)
 
 
+def test_validate_setup_rejects_invalid_choices_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = _settings()
+
+    monkeypatch.setattr(
+        "local_llm_proxy.services.validate.requests.get",
+        lambda *args, **kwargs: DummyResponse({}),
+    )
+    monkeypatch.setattr(
+        "local_llm_proxy.services.validate.requests.post",
+        lambda *args, **kwargs: DummyResponse({"choices": []}),
+    )
+
+    with pytest.raises(RuntimeError, match="Full response"):
+        validate_setup(settings)
+
+
+def test_normalize_ping_host_only_rewrites_hostname() -> None:
+    assert (
+        _normalize_ping_host("http://" + "host" + ".docker.internal:11434/api/tags?q=1")
+        == "http://localhost:11434/api/tags?q=1"
+    )
+    assert _normalize_ping_host("http://api-ollama.example:11434") == "http://api-ollama.example:11434"
+    assert _normalize_ping_host("http://ollama:11434") == "http://localhost:11434"

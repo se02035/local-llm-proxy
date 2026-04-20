@@ -19,6 +19,8 @@ def _settings(tmp_path: Path) -> Settings:
         ollama_host="http://localhost:11434",
         litellm_port="4000",
         litellm_master_key="master",
+        litellm_ollama_model="ollama/gemma3:12b",
+        litellm_model_name="ollama/gemma3:12b.ollama",
     )
 
 
@@ -96,6 +98,7 @@ def test_seed_virtual_key_generates_and_writes(monkeypatch, tmp_path: Path) -> N
     key = proxy._seed_virtual_key(settings)
     assert key == "generated-key"
     assert settings.virtual_key_file.read_text(encoding="utf-8").strip() == "generated-key"
+    assert oct(settings.virtual_key_file.stat().st_mode & 0o777) == "0o600"
 
 
 def test_seed_virtual_key_urls_use_litellm_port(monkeypatch, tmp_path: Path) -> None:
@@ -110,6 +113,8 @@ def test_seed_virtual_key_urls_use_litellm_port(monkeypatch, tmp_path: Path) -> 
         ollama_host=settings.ollama_host,
         litellm_port="5000",
         litellm_master_key=settings.litellm_master_key,
+        litellm_ollama_model=settings.litellm_ollama_model,
+        litellm_model_name=settings.litellm_model_name,
     )
 
     def _fake_get(url: str, **_kwargs):
@@ -130,3 +135,21 @@ def test_seed_virtual_key_urls_use_litellm_port(monkeypatch, tmp_path: Path) -> 
     monkeypatch.setattr(proxy.requests, "post", _fake_post)
 
     assert proxy._seed_virtual_key(settings) == "k2"
+
+
+def test_seed_virtual_key_request_errors_are_wrapped(monkeypatch, tmp_path: Path) -> None:
+    import requests
+
+    settings = _settings(tmp_path)
+
+    def _raise(*_args, **_kwargs):
+        raise requests.RequestException("network fail")
+
+    monkeypatch.setattr(proxy.requests, "get", _raise)
+
+    try:
+        proxy._seed_virtual_key(settings)
+    except RuntimeError as exc:
+        assert "Failed to seed LiteLLM virtual key" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError")

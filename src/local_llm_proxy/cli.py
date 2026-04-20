@@ -51,7 +51,11 @@ def setup_start(litellm_config_file: Path) -> None:
 def setup_stop() -> None:
     """Stop proxy services."""
     settings = load_settings()
-    stop_proxy(settings)
+    try:
+        stop_proxy(settings)
+    except RuntimeError as exc:
+        err(str(exc))
+        raise click.ClickException(str(exc)) from exc
     click.echo("Teardown complete.")
 
 

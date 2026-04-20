@@ -18,7 +18,7 @@ The goal is a single, repeatable workflow (no shell scripts): configure files un
 1. **Python 3.10+** (3.11 recommended; matches CI).
 2. **Docker** and **Docker Compose** (for LiteLLM, Postgres, ngrok containers).
 3. **Ollama** installed and running on the host (native install for best GPU support).
-4. **Ngrok account** and `NGROK_AUTHTOKEN` for public tunneling.
+4. **Ngrok account** and `NGROK_AUTHTOKEN` (optional — only required for public tunneling).
 
 ## Install the CLI (development)
 
@@ -87,6 +87,11 @@ local-llm-proxy validate
 ```bash
 docker compose -f config/docker-compose.yml --env-file config/.env up -d
 ```
+
+
+**Cursor setup tip (optional):**
+If you tunnel with ngrok and use Cursor, set **Override OpenAI Base URL** to your ngrok URL with `/cursor` appended.
+Use the **Virtual key** printed by `local-llm-proxy setup start` (line starts with `Virtual key:`) as Cursor's API key; do not use your personal OpenAI key.
 
 ## Code quality and tests
 
