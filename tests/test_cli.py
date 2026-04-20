@@ -45,6 +45,41 @@ def test_setup_start_success(monkeypatch, tmp_path: Path) -> None:
     assert captured["path"] == config_file
 
 
+def test_setup_start_uses_default_litellm_config(monkeypatch, tmp_path: Path) -> None:
+    repo_root = tmp_path
+    cfg = repo_root / "config"
+    cfg.mkdir(parents=True)
+    default_cfg = cfg / "litellm-config.yaml"
+    default_cfg.write_text("model_list: []\n", encoding="utf-8")
+
+    def _settings_local() -> Settings:
+        return Settings(
+            repo_root=repo_root,
+            config_dir=cfg,
+            env_file=cfg / ".env",
+            compose_file=cfg / "docker-compose.yml",
+            virtual_key_file=cfg / ".litellm_virtual_key",
+            ollama_model="gemma3:12b",
+            ollama_host="http://localhost:11434",
+            litellm_port="4000",
+            litellm_master_key="master",
+        )
+
+    monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings_local)
+
+    captured: dict[str, object] = {}
+
+    def _start(_settings, *, litellm_config_file):
+        captured["path"] = litellm_config_file
+        return {"public_url": "https://abc.ngrok.io", "virtual_key": "vk"}
+
+    monkeypatch.setattr("local_llm_proxy.cli.start_proxy", _start)
+
+    result = CliRunner().invoke(cli, ["setup", "start"])
+    assert result.exit_code == 0
+    assert captured["path"] == default_cfg
+
+
 def test_setup_start_failure(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("local_llm_proxy.cli.load_settings", _settings)
 
